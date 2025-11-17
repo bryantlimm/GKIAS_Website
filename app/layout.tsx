@@ -4,12 +4,13 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { AuthProvider } from '@/components/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'GKI Bungur Bakal Jemaat Alam Sutera',
-  description: 'Website resmi GKI Bungur Bakal Jemaat Alam Sutera',
+  title: 'GKI Alam Sutera',
+  description: 'Gereja Kristen Indonesia Alam Sutera Websitea',
 };
 
 export default function RootLayout({
@@ -18,17 +19,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <body className={inter.className}>
-        {/* We use a flex column to push the footer to the bottom */}
-        <div className="flex flex-col min-h-screen"> 
+        <AuthProvider>
           <Navbar />
-          {/* Main content area that grows */}
-          <main className="flex-grow"> 
-            {children} {/* This is your page content */}
-          </main>
-          <Footer /> {/* <-- The Footer is placed here */}
-        </div>
+          {children}
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,5 +1,3 @@
-// lib/firebase.ts
-
 // 1. Import the functions you need from the Firebase SDKs
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
@@ -18,10 +16,14 @@ const firebaseConfig = {
 
 // 3. Initialize Firebase
 // Check if an app is already initialized to prevent errors during Next.js server rendering.
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+// const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app);
 
 // 4. Export the services you will use
-export const db = getFirestore(app);
-export const auth = getAuth(app);
-export const storage = getStorage(app);
-// You can export 'app' if needed, but the services above are usually enough.
+// export const db = getFirestore(app);
+// export const auth = getAuth(app);
+// export const storage = getStorage(app);
+export { db, storage, auth };

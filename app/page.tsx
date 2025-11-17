@@ -1,12 +1,49 @@
 // app/page.tsx
-export default function Home() {
-  return (
-    <main>
-      {/* This will be the content area below the Navbar */}
-      <div className="pt-20 text-center">
-        <h1 className="text-3xl font-bold">Welcome Home!</h1>
-        <p className="text-gray-600">Navbar and Footer will wrap this content.</p>
+import HeroSection from '@/components/home/HeroSection';
+import NewsSection from '@/components/home/NewsSection';
+import VisiMisi from '@/components/home/VisiMisi';
+import GerejaInduk from '@/components/home/GerejaInduk';
+import { getHomePageSettings, getServiceSchedules, getLatestNews } from '@/lib/data';
+
+// Next.js allows 'async' in Server Components to fetch data directly
+export default async function Home() {
+  // Fetch all necessary data concurrently
+  const [settings, schedules, latestNews] = await Promise.all([
+    getHomePageSettings(),
+    getServiceSchedules(),
+    getLatestNews(),
+  ]);
+
+  // Handle case where settings data is missing
+  if (!settings) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center pt-20">
+        <p className="text-xl text-red-500">Error: Home page settings data is missing from Firebase Firestore.</p>
       </div>
+    );
+  }
+
+  return (
+    <main className="pt-16">
+      {/* 1. Hero and Schedules Section */}
+      <HeroSection 
+        heroTitle={settings.heroTitle}
+        heroImageUrl={settings.heroImageUrl}
+        schedules={schedules}
+      />
+      
+      {/* 2. News Section (Carousel) */}
+      <NewsSection latestNews={latestNews} />
+      
+      {/* 3. Visi & Misi */}
+      <VisiMisi visi={settings.visi} misi={settings.misi} />
+
+      {/* 4. Gereja Induk */}
+      <GerejaInduk 
+        gerejaIndukTitle={settings.gerejaIndukTitle}
+        gerejaIndukDescription={settings.gerejaIndukDescription}
+        gerejaIndukImageUrl={settings.gerejaIndukImageUrl}
+      />
     </main>
   );
 }

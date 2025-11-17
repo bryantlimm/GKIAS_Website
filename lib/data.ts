@@ -1,6 +1,6 @@
 // lib/data.ts
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, getDoc, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 // ----------------------------------------------------
 // 1. Fetching Settings (Visi/Misi, Gereja Induk, Hero Data)
@@ -11,7 +11,17 @@ export async function getHomePageSettings() {
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+      // Explicitly define the return structure with safe fallbacks
+      return {
+        heroTitle: data.heroTitle || "Welcome to GKI Alam Sutera",
+        heroImageUrl: data.heroImageUrl || "https://via.placeholder.com/1600x900?text=Background+Missing",
+        visi: data.visi || "Visi data missing.",
+        misi: data.misi || "Misi data missing.",
+        gerejaIndukTitle: data.gerejaIndukTitle || "Gereja Induk",
+        gerejaIndukDescription: data.gerejaIndukDescription || "Description missing.",
+        gerejaIndukImageUrl: data.gerejaIndukImageUrl || "https://via.placeholder.com/800x600?text=Gereja+Induk+Image+Missing",
+      };
     } else {
       console.error("No 'homePage' settings document found!");
       return null;
@@ -28,14 +38,20 @@ export async function getHomePageSettings() {
 export async function getServiceSchedules() {
   try {
     const schedulesCollection = collection(db, "schedules");
-    // Create a query to order the documents by the 'order' field
     const q = query(schedulesCollection, orderBy("order", "asc"));
     
     const querySnapshot = await getDocs(q);
-    const schedules = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    
+    // Explicitly cast and map the data to ensure correct fields are present
+    const schedules = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name as string,   // Explicitly cast
+            time: data.time as string,   // Explicitly cast
+            order: data.order as number, // Explicitly cast
+        };
+    });
     return schedules;
   } catch (error) {
     console.error("Error fetching schedules:", error);
@@ -49,16 +65,28 @@ export async function getServiceSchedules() {
 export async function getLatestNews() {
   try {
     const newsCollection = collection(db, "news");
-    // Order by date descending and limit to 3 items
     const q = query(newsCollection, orderBy("date", "desc"), limit(3));
 
     const querySnapshot = await getDocs(q);
-    const news = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      // Convert Firestore Timestamp to a readable string (optional but helpful)
-      date: doc.data().date.toDate().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }),
-      ...doc.data()
-    }));
+    
+    const news = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      
+      // FIX: Check if data.date is a Firestore Timestamp before calling toDate()
+      // If it is, convert it to a simple, serializable string.
+      const formattedDate = 
+        data.date instanceof Timestamp
+          ? data.date.toDate().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+          : data.date; // Fallback if it's already a string
+
+      return {
+        id: doc.id,
+        title: data.title,
+        imageUrl: data.imageUrl,
+        date: formattedDate, // Pass the simple string date
+        // Note: You must explicitly list all fields you want to pass
+      };
+    });
     return news;
   } catch (error) {
     console.error("Error fetching news:", error);
