@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 
+export const dynamic = 'force-dynamic';
+
 // Define the structure of a News Item
 interface NewsItem {
   id: string;

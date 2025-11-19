@@ -5,6 +5,8 @@ import VisiMisi from '@/components/home/VisiMisi';
 import GerejaInduk from '@/components/home/GerejaInduk';
 import { getHomePageSettings, getServiceSchedules, getLatestNews } from '@/lib/data';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // Fetch all necessary data concurrently
   const [settings, schedules, latestNews] = await Promise.all([
