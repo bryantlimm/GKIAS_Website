@@ -56,7 +56,7 @@ export default async function KebaktianPage() {
         {/* Footer Note */}
         <div className="mt-12 p-6 bg-blue-100 border-l-4 border-blue-600 rounded-lg text-center">
           <p className="text-lg font-medium text-blue-800">
-            Pastikan untuk memeriksa pengumuman terbaru mengenai perubahan jadwal atau lokasi ibadah.
+            Pastikan untuk memeriksa pengumuman terbaru mengenai perubahan jadwal ibadah.
           </p>
         </div>
         

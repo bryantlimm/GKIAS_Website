@@ -5,7 +5,6 @@ import VisiMisi from '@/components/home/VisiMisi';
 import GerejaInduk from '@/components/home/GerejaInduk';
 import { getHomePageSettings, getServiceSchedules, getLatestNews } from '@/lib/data';
 
-// Next.js allows 'async' in Server Components to fetch data directly
 export default async function Home() {
   // Fetch all necessary data concurrently
   const [settings, schedules, latestNews] = await Promise.all([
@@ -18,7 +17,7 @@ export default async function Home() {
   if (!settings) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center pt-20">
-        <p className="text-xl text-red-500">Error: Home page settings data is missing from Firebase Firestore.</p>
+        <p className="text-xl text-red-500">Error: Home page settings data is missing.</p>
       </div>
     );
   }
@@ -29,7 +28,8 @@ export default async function Home() {
       <HeroSection 
         heroTitle={settings.heroTitle}
         heroImageUrl={settings.heroImageUrl}
-        schedules={schedules}
+        // FIX: Only take the first 3 items from the array
+        schedules={schedules.slice(0, 3)} 
       />
       
       {/* 2. News Section (Carousel) */}
@@ -42,7 +42,7 @@ export default async function Home() {
       <GerejaInduk 
         gerejaIndukTitle={settings.gerejaIndukTitle}
         gerejaIndukDescription={settings.gerejaIndukDescription}
-        gerejaIndukImageUrl={settings.gerejaIndukImageUrl}
+        gerejaIndukImageUrl={settings.gerejaIndukImageUrl} 
       />
     </main>
   );
