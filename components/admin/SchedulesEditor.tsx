@@ -1,6 +1,7 @@
 // components/admin/SchedulesEditor.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
@@ -14,6 +15,7 @@ interface Schedule {
 }
 
 export default function SchedulesEditor() {
+  const router = useRouter();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | '', message: string }>({ type: '', message: '' });
@@ -73,8 +75,11 @@ export default function SchedulesEditor() {
     try {
       // Create a new document with an auto-generated ID
       const newDocRef = doc(schedulesCollectionRef);
-      await setDoc(newDocRef, newItem as { name: string, time: string, order: number });
+      // Use consistent double-casting like we did in handleSaveAll
+      await setDoc(newDocRef, newItem as unknown as Record<string, unknown>);
       
+      router.refresh();
+
       // Update local state with the new item and its generated ID
       setSchedules(prev => [...prev, { ...newItem, id: newDocRef.id }].sort((a, b) => a.order - b.order));
       setNewItem({ name: '', time: '', order: 0 }); // Reset form
@@ -104,6 +109,8 @@ export default function SchedulesEditor() {
       });
 
       await Promise.all(updatePromises);
+      router.refresh();
+
       setStatusMessage({ type: 'success', message: 'Semua jadwal berhasil diperbarui!' });
 
     } catch (error) {
@@ -121,7 +128,7 @@ export default function SchedulesEditor() {
 
     try {
         await deleteDoc(doc(db, "schedules", id));
-        // Remove item from local state
+        router.refresh();
         setSchedules(prev => prev.filter(schedule => schedule.id !== id));
         setStatusMessage({ type: 'success', message: 'Jadwal berhasil dihapus!' });
     } catch (error) {
@@ -153,7 +160,7 @@ export default function SchedulesEditor() {
         <h3 className="text-2xl font-semibold text-gray-700">Jadwal yang Ada</h3>
         
         <div className="overflow-x-auto">
-          <table className="w-full border-gray-300 rounded-lg p-2 text-sm text-gray-900">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Kebaktian</th>
@@ -217,7 +224,12 @@ export default function SchedulesEditor() {
       {/* Add New Schedule Form */}
       <div className="mt-8 pt-6 border-t border-gray-200">
         <h3 className="text-2xl font-semibold text-gray-700 mb-4">Tambah Jadwal Baru</h3>
-        <form onSubmit={handleAddSchedule} className="flex-grow px-4 py-2 border border-gray-300 rounded-lg text-gray-900">
+        
+        {/* FIXED HERE: 
+          Changed className to use Flexbox layout (flex flex-col md:flex-row) 
+          instead of Input styling (border, padding, etc.).
+        */}
+        <form onSubmit={handleAddSchedule} className="flex flex-col md:flex-row gap-4 items-end">
             <input
                 type="text"
                 placeholder="Nama Kebaktian (e.g., Kebaktian Umum 3)"
@@ -236,15 +248,15 @@ export default function SchedulesEditor() {
             />
             <input
                 type="number"
-                placeholder="Urutan (0-9)"
+                placeholder="Urutan"
                 value={newItem.order === 0 ? '' : newItem.order}
                 onChange={(e) => setNewItem(prev => ({ ...prev, order: parseInt(e.target.value) || 0 }))}
-                className="flex-grow px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
+                className="w-full md:w-32 px-4 py-2 border border-gray-300 rounded-lg text-gray-900"
                 min="0"
             />
             <button
                 type="submit"
-                className="py-2 px-6 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50"
+                className="w-full md:w-auto py-2 px-6 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50"
                 disabled={isSaving}
             >
                 Tambah

@@ -1,4 +1,5 @@
 // lib/data.ts
+import { unstable_noStore } from 'next/cache';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, getDoc, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 
@@ -36,6 +37,7 @@ export async function getHomePageSettings() {
 // 2. Fetching Service Schedules (Ordered by 'order' field)
 // ----------------------------------------------------
 export async function getServiceSchedules() {
+  unstable_noStore();
   try {
     const schedulesCollection = collection(db, "schedules");
     const q = query(schedulesCollection, orderBy("order", "asc"));

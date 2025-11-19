@@ -1,6 +1,7 @@
 // components/admin/SettingsEditor.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -26,6 +27,8 @@ const initialSettings: SettingsData = {
 };
 
 export default function SettingsEditor() {
+  const router = useRouter();
+
   const [settings, setSettings] = useState<SettingsData>(initialSettings);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | '', message: string }>({ type: '', message: '' });
@@ -61,6 +64,8 @@ export default function SettingsEditor() {
 
     try {
       await updateDoc(settingsDocRef, settings as unknown as Record<string, unknown>);
+      setStatusMessage({ type: 'success', message: 'Pengaturan disimpan!' });
+      router.refresh();
       setStatusMessage({ type: 'success', message: 'Pengaturan disimpan!' });
     } catch (error) {
       console.error("Error updating settings:", error);

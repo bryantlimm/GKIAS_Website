@@ -1,6 +1,7 @@
 // components/admin/NewsManager.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
@@ -17,6 +18,8 @@ interface NewsItem {
 }
 
 export default function NewsManager() {
+    const router = useRouter();
+
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,53 +75,54 @@ export default function NewsManager() {
     setEditId(null);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setStatusMessage({ type: '', message: '' });
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setStatusMessage({ type: '', message: '' });
 
-    try {
-      let finalImageUrl = existingImageUrl;
-      let finalPdfUrl = existingPdfUrl;
+        try {
+        let finalImageUrl = existingImageUrl;
+        let finalPdfUrl = existingPdfUrl;
 
-      // Upload Image if new one selected
-      if (imageFile) {
-        finalImageUrl = await handleFileUpload(imageFile, 'news_images');
-      }
+        // Upload Image if new one selected
+        if (imageFile) {
+            finalImageUrl = await handleFileUpload(imageFile, 'news_images');
+        }
 
-      // Upload PDF if new one selected (NEW)
-      if (pdfFile) {
-        finalPdfUrl = await handleFileUpload(pdfFile, 'news_pdfs');
-      }
+        // Upload PDF if new one selected (NEW)
+        if (pdfFile) {
+            finalPdfUrl = await handleFileUpload(pdfFile, 'news_pdfs');
+        }
 
-      const newsData = {
-        title,
-        body,
-        imageUrl: finalImageUrl || "https://picsum.photos/600/400",
-        pdfUrl: finalPdfUrl || "", // Save PDF URL
-        date: Timestamp.now(),
-      };
+        const newsData = {
+            title,
+            body,
+            imageUrl: finalImageUrl || "https://picsum.photos/600/400",
+            pdfUrl: finalPdfUrl || "", // Save PDF URL
+            date: Timestamp.now(),
+        };
 
-      if (isEditing && editId) {
-        const newsDoc = doc(db, "news", editId);
-        await updateDoc(newsDoc, newsData as unknown as Record<string, unknown>);
-        setStatusMessage({ type: 'success', message: 'Berita berhasil diperbarui!' });
-      } else {
-        await addDoc(newsCollectionRef, newsData);
-        setStatusMessage({ type: 'success', message: 'Berita baru berhasil diterbitkan!' });
-      }
+        if (isEditing && editId) {
+            const newsDoc = doc(db, "news", editId);
+            await updateDoc(newsDoc, newsData as unknown as Record<string, unknown>);
+            setStatusMessage({ type: 'success', message: 'Berita berhasil diperbarui!' });
+        } else {
+            await addDoc(newsCollectionRef, newsData);
+            setStatusMessage({ type: 'success', message: 'Berita baru berhasil diterbitkan!' });
+        }
+        router.refresh();
 
-      await fetchNews();
-      resetForm();
+        await fetchNews();
+        resetForm();
 
-    } catch (error) {
-      console.error("Error saving news:", error);
-      setStatusMessage({ type: 'error', message: 'Gagal menyimpan berita.' });
-    } finally {
-      setIsSaving(false);
-      setTimeout(() => setStatusMessage({ type: '', message: '' }), 5000);
-    }
-  };
+        } catch (error) {
+        console.error("Error saving news:", error);
+        setStatusMessage({ type: 'error', message: 'Gagal menyimpan berita.' });
+        } finally {
+        setIsSaving(false);
+        setTimeout(() => setStatusMessage({ type: '', message: '' }), 5000);
+        }
+    };
 
   const handleEditClick = (item: NewsItem) => {
     setIsEditing(true);
