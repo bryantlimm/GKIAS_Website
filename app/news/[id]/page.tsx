@@ -76,19 +76,20 @@ export default async function NewsDetailPage(props: NewsDetailPageProps) {
         {/* --- PDF DOWNLOAD BUTTON (New Feature) --- */}
         {newsItem.pdfUrl && (
             <div className="bg-gray-50 border border-gray-200 p-6 rounded-xl flex items-center justify-between mb-10">
-                <div>
-                    <h3 className="text-lg font-bold text-gray-800">Lampiran Dokumen</h3>
-                    <p className="text-gray-600 text-sm">Unduh warta jemaat lengkap dalam format PDF.</p>
-                </div>
-                <a 
-                    href={newsItem.pdfUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center py-2 px-6 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-md"
-                >
-                    <span className="mr-2">📄</span> Download PDF
-                </a>
-            </div>
+              <div>
+                  <h3 className="text-lg font-bold text-gray-800">Lampiran Dokumen</h3>
+                  <p className="text-gray-600 text-sm">Unduh warta jemaat lengkap dalam format PDF.</p>
+              </div>
+              <a 
+                  href={newsItem.pdfUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  // FIX: Added 'text-sm' for mobile and 'md:text-base' for larger screens
+                  className="flex items-center py-2 px-6 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-md text-sm md:text-base"
+              >
+                  Download PDF
+              </a>
+          </div>
         )}
         
         <div className="mt-10">

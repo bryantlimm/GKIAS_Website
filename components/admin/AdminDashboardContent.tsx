@@ -32,7 +32,7 @@ export default function AdminDashboardContent() {
         <div className="flex justify-between items-center mb-8 border-b-4 border-blue-600 pb-4">
             <div>
                 <h1 className="text-4xl font-extrabold text-blue-900">
-                Admin Dashboard 🔒
+                Admin Dashboard
                 </h1>
                 <p className="text-lg text-gray-700 mt-1">
                 Login sebagai: <span className="font-semibold">{user?.email}</span>

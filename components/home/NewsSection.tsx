@@ -38,7 +38,7 @@ export default function NewsSection({ latestNews }: NewsProps) {
     <section className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-end mb-8">
-          <h2 className="text-3xl font-bold text-blue-900">📰 News</h2>
+          <h2 className="text-3xl font-bold text-blue-900">News</h2>
           <Link href="/news" className="text-blue-600 font-semibold hover:text-blue-800 transition duration-300">
             View All &rarr;
           </Link>

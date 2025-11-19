@@ -26,7 +26,7 @@ export default async function AboutUsPage() {
         {/* Visi Section */}
         <section className="bg-white p-8 rounded-xl shadow-2xl mb-12 border-t-8 border-blue-600">
           <h2 className="text-4xl font-extrabold text-blue-800 mb-6 flex items-center">
-            <span className="text-6xl mr-4">💡</span> Visi Kami
+            Visi Kami
           </h2>
           <p className="text-xl text-gray-700 leading-relaxed">
             {settings.visi}
@@ -36,7 +36,7 @@ export default async function AboutUsPage() {
         {/* Misi Section */}
         <section className="bg-white p-8 rounded-xl shadow-2xl mb-12 border-t-8 border-green-600">
           <h2 className="text-4xl font-extrabold text-green-800 mb-6 flex items-center">
-            <span className="text-6xl mr-4">🎯</span> Misi Kami
+            Misi Kami
           </h2>
           <p className="text-xl text-gray-700 leading-relaxed">
             {settings.misi}

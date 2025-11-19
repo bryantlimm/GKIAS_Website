@@ -17,7 +17,7 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-blue-900 text-white mt-10">
+    <footer className="bg-blue-900 text-white">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -30,7 +30,8 @@ export default function Footer() {
                 alt="GKIAS Logo" 
                 width={150} 
                 height={150} 
-                className="mr-3 rounded-full"
+                // Removed 'rounded-full' so the logo shows as a square/rectangle
+                className="mr-3" 
               />
               {/* <span className="text-xl font-bold">GKI Alam Sutera</span> */}
             </div>

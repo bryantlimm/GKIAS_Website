@@ -13,6 +13,7 @@ export const metadata: Metadata = {
   description: 'Gereja Kristen Indonesia Alam Sutera Websitea',
 };
 
+// app/layout.tsx
 export default function RootLayout({
   children,
 }: {
@@ -22,9 +23,20 @@ export default function RootLayout({
     <html lang="id">
       <body className={inter.className}>
         <AuthProvider>
-          <Navbar />
-          {children}
-          <Footer />
+          {/* 1. Flex container that takes up at least 100% of screen height */}
+          <div className="flex flex-col min-h-screen bg-white"> 
+            
+            <Navbar />
+            
+            {/* 2. Main content grows to fill available space, pushing footer down */}
+            <main className="flex-grow"> 
+              {children}
+            </main>
+            
+            {/* 3. Footer sits at the bottom */}
+            <Footer />
+            
+          </div>
         </AuthProvider>
       </body>
     </html>

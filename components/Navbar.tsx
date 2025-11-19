@@ -75,15 +75,14 @@ export default function Navbar() {
               )}
             </button>
 
-            {/* Logo on the right side for mobile */}
-            <Link href="/" className="flex items-center ml-auto">
+            {/* <Link href="/" className="flex items-center ml-auto">
               <Image 
                 src="/main_logo.png" 
                 alt="GKIAS Logo" 
                 width={32} 
                 height={32} 
               />
-            </Link>
+            </Link> */}
           </div>
         </div>
       </div>

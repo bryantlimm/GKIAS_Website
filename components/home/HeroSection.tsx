@@ -41,21 +41,24 @@ export default function HeroSection({ heroTitle, heroImageUrl, schedules }: Hero
 
         {/* Services Schedule (Right Side) */}
         <div className="md:w-1/2 bg-white/90 p-6 md:p-8 rounded-xl shadow-2xl text-blue-900">
-          <h2 className="text-2xl font-bold mb-4 border-b-2 border-blue-200 pb-2">Jadwal Kebaktian</h2>
-          <ul className="space-y-3">
-            {schedules.map((s) => (
-              <li key={s.id} className="flex justify-between text-lg md:text-xl">
-                <span className="font-semibold">{s.name}</span>
-                <span className="font-medium text-blue-700">{s.time}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6 text-center">
-            <Link href="/kebaktian" className="inline-block bg-blue-600 text-white font-semibold py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300">
-              View More &rarr;
-            </Link>
-          </div>
-        </div>
+  <h2 className="text-2xl font-bold mb-4 border-b-2 border-blue-200 pb-2">Jadwal Kebaktian</h2>
+  <ul className="space-y-3">
+    {schedules.map((s) => (
+      // FIX: Changed base text size from text-lg to text-base for mobile
+      <li key={s.id} className="flex justify-between text-base md:text-xl"> 
+        {/* FIX: Changed base text size from text-lg to text-sm */}
+        <span className="font-semibold text-sm md:text-lg">{s.name}</span>
+        {/* FIX: Changed base text size from text-xl to text-base */}
+        <span className="font-medium text-blue-700 text-base md:text-xl">{s.time}</span>
+      </li>
+    ))}
+  </ul>
+  <div className="mt-6 text-center">
+    <Link href="/kebaktian" className="inline-block bg-blue-600 text-white font-semibold py-2 px-6 rounded-full hover:bg-blue-700 transition duration-300">
+      View More &rarr;
+    </Link>
+  </div>
+</div>
 
       </div>
     </section>
