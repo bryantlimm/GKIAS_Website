@@ -28,16 +28,17 @@ export default function Footer() {
               <Image 
                 src="/main_logo.png"
                 alt="GKIAS Logo" 
-                width={150} 
-                height={150} 
+                width={200} 
+                height={200} 
                 // Removed 'rounded-full' so the logo shows as a square/rectangle
                 className="mr-3" 
               />
               {/* <span className="text-xl font-bold">GKI Alam Sutera</span> */}
             </div>
-            <p className="text-sm text-blue-200">
+            {/* ga penting yg ini */}
+            {/* <p className="text-sm text-blue-200">
               Melayani dan menjadi berkat bagi sesama.
-            </p>
+            </p> */}
           </div>
 
           {/* Column 2: Contact Us */}
@@ -47,7 +48,7 @@ export default function Footer() {
               <span className="font-medium text-white">Call/WA:</span> +62-812-9059-3338
             </p>
             <p className="text-sm text-blue-200">
-              <span className="font-medium text-white">Email:</span> gki.bjalamsutera@gmail.com
+              <span className="font-medium text-white">Email:</span> gkiamsutera@gmail.com
             </p>
           </div>
 

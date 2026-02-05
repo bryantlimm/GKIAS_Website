@@ -12,7 +12,7 @@ interface NewsDetail {
   date: string;
   imageUrl: string;
   body: string;
-  pdfUrl?: string; // Add this
+  pdfUrl?: string; 
 }
 
 interface NewsDetailPageProps {
