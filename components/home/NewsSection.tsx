@@ -15,7 +15,7 @@ interface NewsProps {
 
 // News Card component
 const NewsCard: React.FC<NewsItem> = ({ title, date, imageUrl, id }) => (
-  <Link href={`/news/${id}`} className="block bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+  <Link href={`/news/${id}`} className="block bg-white rounded shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
     {/* Placeholder or real image */}
     <div className="relative w-full h-40">
       <Image

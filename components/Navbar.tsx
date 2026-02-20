@@ -34,7 +34,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-full">
           
           {/* Logo (Left Side - Desktop) */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 ml-2">
             <Link href="/" className="flex items-center">
               <Image 
                 src="/main_logo.png" 

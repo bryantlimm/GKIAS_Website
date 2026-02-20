@@ -1,4 +1,6 @@
 // app/page.tsx
+
+// hosting pakai hostinger. email gereja. deployment firebase bryant.
 import HeroSection from '@/components/home/HeroSection';
 import NewsSection from '@/components/home/NewsSection';
 import VisiMisi from '@/components/home/VisiMisi';
@@ -45,7 +47,7 @@ export default async function Home() {
         heroImageUrls={settings.heroImageUrls}
         schedules={schedules.slice(0, 3)} 
       />
-      
+
       {/* 3. Visi & Misi */}
       <VisiMisi visi={settings.visi} misi={settings.misi} />
 
