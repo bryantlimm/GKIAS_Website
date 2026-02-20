@@ -1,7 +1,6 @@
 // components/home/HeroSection.tsx
 'use client'; // <-- Required for state and intervals
 
-import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 

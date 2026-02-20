@@ -5,9 +5,11 @@ import { useState, useEffect } from 'react';
 
 interface NewsPageHeaderProps {
   heroImageUrls: string[];
+  title?: string;
+  subtitle?: string;
 }
 
-export default function NewsPageHeader({ heroImageUrls }: NewsPageHeaderProps) {
+export default function NewsPageHeader({ heroImageUrls, title = "Warta Jemaat & Informasi", subtitle = "Ikuti perkembangan terkini gereja kami melalui bulletin dan berita terbaru." }: NewsPageHeaderProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Auto-play interval
@@ -34,10 +36,10 @@ export default function NewsPageHeader({ heroImageUrls }: NewsPageHeaderProps) {
   {/* Content */}
   <div className="relative z-30 max-w-6xl mx-auto p-4 text-center">
     <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
-          Warta Jemaat & Informasi
+          {title}
         </h1>
         <p className="text-xl md:text-2xl text-gray-100">
-          Ikuti perkembangan terkini gereja kami melalui bulletin dan berita terbaru.
+          {subtitle}
         </p>
       </div>
       

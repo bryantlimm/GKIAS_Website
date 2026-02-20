@@ -56,9 +56,9 @@ export default async function NewsDetailPage(props: NewsDetailPageProps) {
   if (!newsItem) return <div className="pt-24 text-center">Berita tidak ditemukan</div>;
 
   return (
-    <main className="min-h-screen pt-20 bg-white">
+    <main className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative h-64 md:h-96 w-full">
+      <div className="relative h-[60vh] md:h-96 w-full">
         <Image src={newsItem.imageUrl} alt={newsItem.title} fill className="object-cover z-0" />
         <div className="absolute inset-0 bg-black opacity-40 z-10"></div>
         <div className="relative z-20 max-w-4xl mx-auto h-full flex items-end p-8">

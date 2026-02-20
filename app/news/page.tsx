@@ -1,7 +1,7 @@
 // app/news/page.tsx
 import Link from 'next/link';
 import Image from 'next/image';
-import NewsPageHeader from '@/components/NewsPageHeader';
+import NewsPageHeader from '@/app/news/NewsPageHeader';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 import { getHomePageSettings } from '@/lib/data';

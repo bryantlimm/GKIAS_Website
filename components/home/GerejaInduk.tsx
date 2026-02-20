@@ -13,11 +13,11 @@ export default function GerejaInduk({ gerejaIndukTitle, gerejaIndukDescription, 
     <section className="py-16 bg-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link href="https://gkibungur.or.id" target="_blank" rel="noopener noreferrer">
-            <div className="bg-white rounded-xl shadow-2xl overflow-hidden md:flex md:items-center">
+            <div className="overflow-hidden md:flex md:items-center">
           
               {/* Image (Left Side) */}
               <div className="md:w-1/3 relative h-64 md:h-80">
-                <Image
+                <Image className='rounded-xl'
                   src={gerejaIndukImageUrl}
                   alt={gerejaIndukTitle}
                   layout="fill"

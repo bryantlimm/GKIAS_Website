@@ -1,5 +1,6 @@
 // app/kebaktian/page.tsx
-import { getServiceSchedules } from '@/lib/data';
+import { getServiceSchedules, getHomePageSettings } from '@/lib/data';
+import NewsPageHeader from '@/app/news/NewsPageHeader';
 import Image from 'next/image';
 
 export const dynamic = 'force-dynamic';
@@ -14,19 +15,20 @@ interface Schedule {
 
 // Next.js Server Component to fetch data
 export default async function KebaktianPage() {
-  const schedules: Schedule[] = await getServiceSchedules();
+  const [schedules, settings] = await Promise.all([
+    getServiceSchedules(),
+    getHomePageSettings()
+  ]);
   
   return (
-    <main className="min-h-screen pt-20 bg-gray-50">
+    <main className="bg-gray-50">
+      <NewsPageHeader 
+        heroImageUrls={settings?.heroImageUrls || []} 
+        title="Jadwal Kebaktian"
+        subtitle="Mari beribadah bersama kami. Tuhan memberkati."
+      />
+      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
-        {/* Page Header */}
-        <h1 className="text-4xl font-extrabold text-blue-900 mb-4 border-b-4 border-blue-600 pb-2 text-center">
-          Jadwal Kebaktian
-        </h1>
-        <p className="text-xl text-gray-600 mb-10 text-center">
-          Mari beribadah bersama kami. Tuhan memberkati.
-        </p>
 
         {/* Schedule List Container */}
         <div className="space-y-8">
