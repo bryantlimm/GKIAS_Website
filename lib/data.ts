@@ -16,7 +16,7 @@ export async function getHomePageSettings() {
       // Explicitly define the return structure with safe fallbacks
       return {
         heroTitle: data.heroTitle || "Welcome to GKI Alam Sutera",
-        heroImageUrl: data.heroImageUrl || "https://via.placeholder.com/1600x900?text=Background+Missing",
+        heroImageUrls: data.heroImageUrls || "https://via.placeholder.com/1600x900?text=Background+Missing",
         visi: data.visi || "Visi data missing.",
         misi: data.misi || "Misi data missing.",
         gerejaIndukTitle: data.gerejaIndukTitle || "Gereja Induk",

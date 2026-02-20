@@ -3,8 +3,15 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+
+// tambah signOut IZINN
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+// import { signInWithEmailAndPassword } from 'firebase/auth';
+
+// tambah docs getDoc sama db juga
+import { doc, getDoc } from 'firebase/firestore'; 
+import { auth, db } from '@/lib/firebase'; 
+// import { auth } from '@/lib/firebase';
 import { useAuth } from '@/components/AuthContext';
 
 export default function AdminLoginPage() {
@@ -16,12 +23,41 @@ export default function AdminLoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  // cek admin bukan
+  const checkAdminRole = async (uid: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      
+      // Check if document exists AND has role === 'admin'
+      if (userDoc.exists() && userDoc.data()?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        // Fail: Regular user trying to login to admin
+        setError('Akun Anda tidak memiliki izin akses Admin.');
+        await signOut(auth); // Force logout immediately
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      console.error("Admin check failed:", err);
+      setError('Gagal memverifikasi hak akses admin.');
+      await signOut(auth);
+      setIsSubmitting(false);
+    }
+  };
+
   // If the user is already logged in, redirect them immediately
+  // pake helper function
   useEffect(() => {
     if (!loading && user) {
-      router.push('/admin'); // Redirect to the main admin dashboard
+      // Instead of blindly redirecting, we check the role first
+      checkAdminRole(user.uid);
     }
   }, [user, loading, router]);
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     router.push('/admin'); 
+  //   }
+  // }, [user, loading, router]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,12 +65,16 @@ export default function AdminLoginPage() {
     setIsSubmitting(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // 1. Authenticate with Email/Password
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // 2. Check Role immediately after login
+      // (The useEffect will also catch this, but calling it here makes the UI snappier)
+      await checkAdminRole(userCredential.user.uid);
+
     } catch (err) { // <-- Remove the ': any' annotation
-      // Safely check if 'err' is an object and has a 'code' property
       if (typeof err === 'object' && err !== null && 'code' in err) {
-        // Now TypeScript knows that 'err' might have a 'code'
-        const firebaseError = err as { code: string, message: string }; // <-- Cast it safely here
+        const firebaseError = err as { code: string, message: string };
 
         if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password') {
           setError('Email atau password salah. Silakan coba lagi.');

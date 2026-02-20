@@ -36,7 +36,7 @@ async function getNewsItem(id: string): Promise<NewsDetail | null> {
         imageUrl: data.imageUrl as string,
         date: formattedDate,
         body: data.body || "",
-        pdfUrl: data.pdfUrl || "" // Fetch PDF URL
+        pdfUrl: data.pdfUrl || "" 
       };
     } else {
         return null;

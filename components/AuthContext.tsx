@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {loading ? (
         // Simple loading screen while checking auth status
         <div className="flex items-center justify-center min-h-screen">
-          <p className="text-xl text-blue-600">Loading user session...</p>
+          <p className="text-xl text-blue-600">Wait a moment...</p>
         </div>
       ) : (
         children

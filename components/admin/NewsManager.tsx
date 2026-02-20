@@ -188,7 +188,7 @@ export default function NewsManager() {
                 />
             </div>
 
-            {/* PDF Upload (NEW) */}
+            {/* PDF Upload */}
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Upload PDF (Opsional)</label>
                 {existingPdfUrl && !pdfFile && <div className="text-xs text-green-600 mb-1">✓ PDF terpasang</div>}

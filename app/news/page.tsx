@@ -1,8 +1,10 @@
 // app/news/page.tsx
 import Link from 'next/link';
 import Image from 'next/image';
+import NewsPageHeader from '@/components/NewsPageHeader';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { getHomePageSettings } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +13,9 @@ interface NewsItem {
   id: string;
   title: string;
   date: string; // Formatted date string
+  heroImageUrls: string[];
   imageUrl: string;
+  // heroImageUrls: string[];
 }
 
 // Function to fetch ALL news items, ordered by date
@@ -48,19 +52,19 @@ async function getAllNews(): Promise<NewsItem[]> {
 
 
 export default async function NewsListingPage() {
-  const allNews = await getAllNews();
+  const [allNews, settings] = await Promise.all([
+    getAllNews(),
+    getHomePageSettings()
+  ]);
+
+  const heroImageUrls = settings?.heroImageUrls || [];
 
   return (
-    <main className="min-h-screen pt-20 bg-gray-50">
+    <main className="bg-gray-50">
+      {/* Page Header with Carousel */}
+      <NewsPageHeader heroImageUrls={heroImageUrls} />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
-        {/* Page Header */}
-        <h1 className="text-4xl font-extrabold text-blue-900 mb-4 border-b-4 border-blue-600 pb-2">
-          Warta Jemaat & Informasi
-        </h1>
-        <p className="text-xl text-gray-600 mb-10">
-          Ikuti perkembangan terkini gereja kami melalui bulletin dan berita terbaru.
-        </p>
 
         {/* News Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const navLinks = [
   { name: 'Home', href: '/' },
@@ -14,12 +14,24 @@ const navLinks = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    // Set fixed position and DARK background
-    <nav className="fixed w-full bg-blue-900 shadow-xl z-50"> 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    // Set fixed position and transparent background, turns solid blue on scroll
+    <nav className={`fixed w-full h-20 z-50 transition-colors duration-300 ${
+      isScrolled ? 'bg-blue-900' : 'bg-transparent'
+    }`}>
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="flex justify-between items-center h-full">
           
           {/* Logo (Left Side - Desktop) */}
           <div className="flex-shrink-0">
@@ -30,7 +42,6 @@ export default function Navbar() {
                 width={100} 
                 height={100} 
               />
-              {/* Removed "GKI Alam Sutera" text for a cleaner dark header */}
             </Link>
           </div>
 
@@ -40,19 +51,18 @@ export default function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                // Text color is WHITE, hover uses a lighter background
-                className="text-white hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition duration-150" 
+                className="text-white hover:text-blue-200 px-3 py-2 text-sm font-medium transition duration-150" 
               >
                 {link.name}
               </Link>
             ))}
             {/* Admin Sign In Button */}
-            <Link
+            {/* <Link
               href="/admin/login"
               className="bg-blue-600 text-white hover:bg-blue-500 px-3 py-2 rounded-md text-sm font-medium ml-4"
             >
               Admin Sign In
-            </Link>
+            </Link> */}
           </div>
 
           {/* Mobile View: Hamburger Menu (Left) and Logo (Right) */}
@@ -60,7 +70,7 @@ export default function Navbar() {
              {/* Hamburger Button (Left) */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+              className="inline-flex items-center justify-center p-2 rounded-md text-white hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
               aria-expanded={isOpen}
             >
               <span className="sr-only">Open main menu</span>
