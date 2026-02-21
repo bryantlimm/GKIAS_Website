@@ -10,14 +10,14 @@ interface GerejaIndukProps {
 
 export default function GerejaInduk({ gerejaIndukTitle, gerejaIndukDescription, gerejaIndukImageUrl }: GerejaIndukProps) {
   return (
-    <section className="py-16 bg-gray-100">
+    <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link href="https://gkibungur.or.id" target="_blank" rel="noopener noreferrer">
             <div className="overflow-hidden md:flex md:items-center">
           
               {/* Image (Left Side) */}
               <div className="md:w-1/3 relative h-64 md:h-80">
-                <Image className='rounded-xl'
+                <Image className='rounded-xlit '
                   src={gerejaIndukImageUrl}
                   alt={gerejaIndukTitle}
                   layout="fill"

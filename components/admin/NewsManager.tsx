@@ -225,7 +225,7 @@ export default function NewsManager() {
               <h4 className="font-bold text-lg text-gray-900 truncate">{item.title}</h4>
               <p className="text-xs text-blue-600 mb-1">{item.date?.toDate().toLocaleDateString()}</p>
               {/* Indicator if PDF exists */}
-              {item.pdfUrl && <span className="inline-block bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded mb-2">PDF Attached 📎</span>}
+              {item.pdfUrl && <span className="inline-block bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded mb-2">PDF Attached</span>}
               <div className="mt-2 flex space-x-3">
                 <button onClick={() => handleEditClick(item)} className="text-sm text-blue-600 font-medium hover:underline">Edit</button>
                 <button onClick={() => handleDelete(item.id)} className="text-sm text-red-600 font-medium hover:underline">Hapus</button>

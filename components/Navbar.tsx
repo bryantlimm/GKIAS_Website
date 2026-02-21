@@ -28,7 +28,7 @@ export default function Navbar() {
   return (
     // Set fixed position and transparent background, turns solid blue on scroll
     <nav className={`fixed w-full h-20 z-50 transition-colors duration-300 ${
-      isScrolled ? 'bg-blue-900' : 'bg-transparent'
+      isScrolled ? 'bg-blue-900/80' : 'bg-transparent'
     }`}>
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex justify-between items-center h-full">

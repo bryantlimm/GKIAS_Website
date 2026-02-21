@@ -8,6 +8,7 @@ import SettingsEditor from './SettingsEditor';
 import SchedulesEditor from './SchedulesEditor';
 import NewsManager from './NewsManager';
 import VolunteerRequestsManager from './VolunteerRequestsManager';
+import PhotoSectionEditor from './PhotoSectionEditor';
 
 export default function AdminDashboardContent() {
   const { user, logout } = useAuth();
@@ -77,6 +78,22 @@ export default function AdminDashboardContent() {
                 {activeSection === 'schedules' && (
                     <div className="p-6 border-t border-blue-100">
                         <SchedulesEditor />
+                    </div>
+                )}
+            </div>
+
+            {/* --- 5. PHOTO GALLERY ACCORDION --- */}
+            <div className="bg-white rounded-xl shadow overflow-hidden">
+                <button 
+                    onClick={() => toggleSection('gallery')}
+                    className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
+                >
+                    <span className="text-xl font-bold text-blue-900">5. Kelola Galeri Foto</span>
+                    <span className="text-2xl text-blue-600">{activeSection === 'gallery' ? '▼' : '▶'}</span>
+                </button>
+                {activeSection === 'gallery' && (
+                    <div className="p-6 border-t border-blue-100">
+                        <PhotoSectionEditor />
                     </div>
                 )}
             </div>

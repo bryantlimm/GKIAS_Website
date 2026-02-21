@@ -13,9 +13,7 @@ interface NewsItem {
   id: string;
   title: string;
   date: string; // Formatted date string
-  heroImageUrls: string[];
   imageUrl: string;
-  // heroImageUrls: string[];
 }
 
 // Function to fetch ALL news items, ordered by date

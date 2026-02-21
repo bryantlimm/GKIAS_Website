@@ -46,7 +46,7 @@ export default function HeroSection({ heroTitle, heroImageUrls, schedules }: Her
       {displayImages.map((url, index) => (
         <div 
           key={url + index}
-          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+          className={`absolute inset-0 transition-opacity duration-1500 ease-out ${
             index === currentSlide ? 'opacity-100 z-0' : 'opacity-0 -z-10'
           }`}
         >
@@ -55,7 +55,7 @@ export default function HeroSection({ heroTitle, heroImageUrls, schedules }: Her
             alt={`GKIAS Background ${index + 1}`}
             fill
             style={{ objectFit: 'cover' }}
-            priority={index === 1}
+            priority={index === 0}
           />
         </div>
       ))}
