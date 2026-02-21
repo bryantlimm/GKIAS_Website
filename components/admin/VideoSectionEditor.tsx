@@ -97,10 +97,10 @@ export default function VideoSectionEditor() {
           value={data.youtubeUrl} 
           onChange={handleChange} 
           className={inputClass} 
-          placeholder="https://www.youtube.com/watch?v=..." 
+          placeholder="https://www.youtube.com/watch?v=... atau https://www.youtube.com/live/..." 
           required 
         />
-        <p className="text-xs text-gray-500 mt-1">Bisa menggunakan link dari address bar atau link "Share" YouTube.</p>
+        <p className="text-xs text-gray-500 mt-1">Bisa menggunakan link dari address bar atau link Share YouTube.</p>
       </div>
 
       <button type="submit" className="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50" disabled={isSaving}>

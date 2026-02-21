@@ -7,7 +7,7 @@ import Image from 'next/image';
 interface PhotoSectionProps {
   title?: string;
   description?: string;
-  imageUrls?: string[];
+  imageUrls: string[];
 }
 
 export default function PhotoSection({ title, description, imageUrls = [] }: PhotoSectionProps) {
@@ -36,7 +36,11 @@ export default function PhotoSection({ title, description, imageUrls = [] }: Pho
   }, []);
 
   // Fallback if no images are uploaded yet
-  const displayImages = imageUrls.length > 0 ? imageUrls : ['/placeholder-hero.jpg'];
+  const displayImages = Array.isArray(imageUrls)
+  ? imageUrls
+  : (typeof imageUrls === 'string' && imageUrls !== '' 
+      ? [imageUrls] 
+      : ['/placeholder-hero.jpg']);
 
   return (
     <section className="relative h-[50vh] md:h-[60vh] flex items-center justify-center text-white overflow-hidden py-20">
@@ -61,7 +65,10 @@ export default function PhotoSection({ title, description, imageUrls = [] }: Pho
                     src={url}
                     alt={`GKIAS Gallery ${index + 1}`}
                     fill
+                    unoptimized
+                    priority={index === 0}
                     style={{ objectFit: 'cover', objectPosition: 'center' }}
+                    onError={() => console.error(`Failed to load image: ${url}`)}
                     />
                 </div>
                 ))}

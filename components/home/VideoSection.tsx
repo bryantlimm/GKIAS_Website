@@ -11,11 +11,20 @@ export default function VideoSection({ title, description, youtubeUrl }: VideoSe
   // Helper to convert standard YouTube links into Embed links
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
+    
+    // Handle YouTube live stream URLs: https://www.youtube.com/live/{ID}
+    const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]+)/);
+    if (liveMatch && liveMatch[1]) {
+      return `https://www.youtube.com/embed/live/${liveMatch[1]}`;
+    }
+    
+    // Handle standard YouTube URLs: watch?v=, youtu.be/, embed/, etc.
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     if (match && match[2].length === 11) {
       return `https://www.youtube.com/embed/${match[2]}`;
     }
+    
     return url; // Return original if parsing fails
   };
 

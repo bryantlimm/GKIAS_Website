@@ -178,6 +178,12 @@ export default function SettingsEditor() {
             ))}
           </div>
         </div>
+
+{/* yg lama */}
+        {/* <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">URL Gambar Utama</label>
+          <input name="heroImageUrl" type="url" value={settings.heroImageUrl} onChange={handleChange} className={inputClass} required />
+        </div>*/}
       </div> 
 
       <h3 className="text-xl font-semibold text-gray-800 pt-2">Visi & Misi</h3>
@@ -205,7 +211,7 @@ export default function SettingsEditor() {
         <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
         <textarea name="gerejaIndukDescription" value={settings.gerejaIndukDescription} onChange={handleChange} rows={4} className={inputClass} required />
       </div>
-
+      
       <button type="submit" className="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50" disabled={isSaving || isUploading}>
         {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
       </button>

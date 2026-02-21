@@ -32,7 +32,14 @@ export default async function Home() {
       getDoc(doc(db, 'settings', 'youtubeSection'))
     ]);
     
-    if (photoDoc.exists()) photoData = photoDoc.data() as any;
+    if (photoDoc.exists()) {
+      const photoRawData = photoDoc.data() as any;
+      photoData = {
+        title: photoRawData.title || '',
+        description: photoRawData.description || '',
+        imageUrls: Array.isArray(photoRawData.imageUrls) ? photoRawData.imageUrls : []
+      };
+    }
     if (videoDoc.exists()) videoData = videoDoc.data() as any;
   } catch (e) {
     console.error("Failed to fetch extra section data", e);
@@ -45,6 +52,10 @@ export default async function Home() {
       </div>
     );
   }
+
+  // Debug logging
+  console.log("Home page - photoData:", photoData);
+  console.log("Home page - photoData.imageUrls:", photoData.imageUrls);
 
   return (
     <main>

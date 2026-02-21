@@ -13,7 +13,7 @@ interface Schedule {
 
 interface HeroProps {
   heroTitle: string;
-  heroImageUrls: string[]; // <-- Changed to array
+  heroImageUrls: string[];
   schedules: Schedule[];
 }
 
