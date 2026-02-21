@@ -5,9 +5,8 @@ import VisiMisi from '@/components/home/VisiMisi';
 import GerejaInduk from '@/components/home/GerejaInduk';
 import JadwalKebaktian from '@/components/home/JadwalKebaktian';
 import PhotoSection from '@/components/home/PhotoSection'; // <-- Import the new component
-
+import VideoSection from '@/components/home/VideoSection';
 import { getHomePageSettings, getServiceSchedules, getLatestNews } from '@/lib/data';
-// 👇 You need to import db and getDoc to fetch the photo settings directly here
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore'; 
 
@@ -24,13 +23,19 @@ export default async function Home() {
 
   // 2. Fetch the new Photo Section data
   let photoData = { title: '', description: '', imageUrls: [] };
+  // Fetch Video Section
+  let videoData = { title: '', description: '', youtubeUrl: '' };
+
   try {
-    const photoDoc = await getDoc(doc(db, 'settings', 'photoSection'));
-    if (photoDoc.exists()) {
-      photoData = photoDoc.data() as any;
-    }
+    const [photoDoc, videoDoc] = await Promise.all([
+      getDoc(doc(db, 'settings', 'photoSection')),
+      getDoc(doc(db, 'settings', 'youtubeSection'))
+    ]);
+    
+    if (photoDoc.exists()) photoData = photoDoc.data() as any;
+    if (videoDoc.exists()) videoData = videoDoc.data() as any;
   } catch (e) {
-    console.error("Failed to fetch photo section data", e);
+    console.error("Failed to fetch extra section data", e);
   }
 
   if (!settings) {
@@ -48,7 +53,13 @@ export default async function Home() {
         heroImageUrls={settings.heroImageUrls}
         schedules={schedules.slice(0, 3)} 
       />
-      
+
+      <VideoSection 
+        title={videoData.title}
+        description={videoData.description}
+        youtubeUrl={videoData.youtubeUrl}
+      />
+
       <NewsSection latestNews={latestNews} />
       
       <JadwalKebaktian 
@@ -56,7 +67,6 @@ export default async function Home() {
         schedules={schedules.slice(0, 3)} 
       />
 
-      {/* 👇 NEW PHOTO SECTION GOES HERE 👇 */}
       <PhotoSection 
         title={photoData.title}
         description={photoData.description}

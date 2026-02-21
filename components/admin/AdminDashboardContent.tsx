@@ -9,6 +9,7 @@ import SchedulesEditor from './SchedulesEditor';
 import NewsManager from './NewsManager';
 import VolunteerRequestsManager from './VolunteerRequestsManager';
 import PhotoSectionEditor from './PhotoSectionEditor';
+import VideoSectionEditor from './VideoSectionEditor';
 
 export default function AdminDashboardContent() {
   const { user, logout } = useAuth();
@@ -56,12 +57,28 @@ export default function AdminDashboardContent() {
                     onClick={() => toggleSection('settings')}
                     className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
                 >
-                    <span className="text-xl font-bold text-blue-900">1. Pengaturan Halaman Utama (Hero, Visi, Misi)</span>
+                    <span className="text-xl font-bold text-blue-900">Pengaturan Halaman Utama (Hero, Visi, Misi)</span>
                     <span className="text-2xl text-blue-600">{activeSection === 'settings' ? '▼' : '▶'}</span>
                 </button>
                 {activeSection === 'settings' && (
                     <div className="p-6 border-t border-blue-100">
                         <SettingsEditor />
+                    </div>
+                )}
+            </div>
+
+            {/* --- 6. YOUTUBE VIDEO ACCORDION --- */}
+            <div className="bg-white rounded-xl shadow overflow-hidden">
+                <button 
+                    onClick={() => toggleSection('video')}
+                    className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
+                >
+                    <span className="text-xl font-bold text-blue-900">Kelola Video YouTube</span>
+                    <span className="text-2xl text-blue-600">{activeSection === 'video' ? '▼' : '▶'}</span>
+                </button>
+                {activeSection === 'video' && (
+                    <div className="p-6 border-t border-blue-100">
+                        <VideoSectionEditor />
                     </div>
                 )}
             </div>
@@ -72,7 +89,7 @@ export default function AdminDashboardContent() {
                     onClick={() => toggleSection('schedules')}
                     className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
                 >
-                    <span className="text-xl font-bold text-blue-900">2. Kelola Jadwal Kebaktian</span>
+                    <span className="text-xl font-bold text-blue-900">Kelola Jadwal Kebaktian</span>
                     <span className="text-2xl text-blue-600">{activeSection === 'schedules' ? '▼' : '▶'}</span>
                 </button>
                 {activeSection === 'schedules' && (
@@ -88,7 +105,7 @@ export default function AdminDashboardContent() {
                     onClick={() => toggleSection('gallery')}
                     className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
                 >
-                    <span className="text-xl font-bold text-blue-900">5. Kelola Galeri Foto</span>
+                    <span className="text-xl font-bold text-blue-900">Kelola Galeri Foto</span>
                     <span className="text-2xl text-blue-600">{activeSection === 'gallery' ? '▼' : '▶'}</span>
                 </button>
                 {activeSection === 'gallery' && (
@@ -104,7 +121,7 @@ export default function AdminDashboardContent() {
                     onClick={() => toggleSection('news')}
                     className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
                 >
-                    <span className="text-xl font-bold text-blue-900">3. Kelola Warta Jemaat & Berita</span>
+                    <span className="text-xl font-bold text-blue-900">Kelola Warta Jemaat & Berita</span>
                     <span className="text-2xl text-blue-600">{activeSection === 'news' ? '▼' : '▶'}</span>
                 </button>
                 {activeSection === 'news' && (
@@ -120,7 +137,7 @@ export default function AdminDashboardContent() {
                     onClick={() => toggleSection('requests')}
                     className="w-full flex justify-between items-center p-6 bg-blue-50 hover:bg-blue-100 transition text-left"
                 >
-                    <span className="text-xl font-bold text-blue-900">4. Kelola Permintaan Pelayanan</span>
+                    <span className="text-xl font-bold text-blue-900">Kelola Permintaan Pelayanan</span>
                     <span className="text-2xl text-blue-600">{activeSection === 'requests' ? '▼' : '▶'}</span>
                 </button>
                 {activeSection === 'requests' && (
