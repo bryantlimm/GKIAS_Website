@@ -1,7 +1,7 @@
 // components/lfjkids/LfjCarousel.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 interface LfjCarouselProps {
@@ -13,7 +13,16 @@ export default function LfjCarousel({ imageUrls, cloudText }: LfjCarouselProps) 
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Fallback if no images are uploaded yet
-  const displayImages = imageUrls.length > 0 ? imageUrls : ['/image1.jpg']; // using your existing image1.jpg as a fallback
+  const displayImages = imageUrls.length > 0 ? imageUrls : ['/image1.jpg'];
+
+  // Auto-advance carousel every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % displayImages.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [displayImages.length]);
 
   const goToSlide = (index: number) => {
     setCurrentIndex(index);

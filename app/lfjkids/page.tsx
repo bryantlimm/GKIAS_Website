@@ -65,8 +65,7 @@ export default async function LfjKidsPage() {
           src="/rainbow.png" 
           alt="Rainbow Background" 
           fill
-        //   className="object-cover md:object-contain object-left scale-110 translate-y-8" 
-          className="object-cover md:object-contain object-left scale-110:scale-100 translate-y-60 md:translate-y-8" 
+          className="object-cover md:object-contain object-left scale-110 translate-y-60 md:translate-y-8" 
         />
       </div>
 
