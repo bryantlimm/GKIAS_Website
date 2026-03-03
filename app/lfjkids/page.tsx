@@ -9,10 +9,10 @@ import BusScene from '@/components/lfjkids/BusScene';
 export const dynamic = 'force-dynamic';
 
 export default async function LfjKidsPage() {
-  let carouselData = {
-    imageUrls: [],
-    cloudText: 'Join us every\nSunday 10am' // Default
-  };
+  let carouselData: { imageUrls: string[]; cloudText: string } = {
+  imageUrls: [],
+  cloudText: 'Join us every\nSunday 10am'
+};
 
   try {
     const docRef = doc(db, 'settings', 'lfjkids');

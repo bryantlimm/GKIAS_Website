@@ -1,0 +1,429 @@
+[debug] [2026-03-03T15:04:26.229Z] ----------------------------------------------------------------------
+[debug] [2026-03-03T15:04:26.231Z] Command:       /opt/homebrew/Cellar/node/24.7.0/bin/node /opt/homebrew/bin/firebase deploy
+[debug] [2026-03-03T15:04:26.231Z] CLI Version:   15.5.1
+[debug] [2026-03-03T15:04:26.231Z] Platform:      darwin
+[debug] [2026-03-03T15:04:26.231Z] Node Version:  v24.7.0
+[debug] [2026-03-03T15:04:26.231Z] Time:          Tue Mar 03 2026 22:04:26 GMT+0700 (Western Indonesia Time)
+[debug] [2026-03-03T15:04:26.231Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-03T15:04:26.835Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-03T15:04:26.835Z] > authorizing via signed-in user (bryantaryadi25@gmail.com)
+[debug] [2026-03-03T15:04:26.835Z] [iam] checking project gkias-website-db for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-03T15:04:26.836Z] Checked if tokens are valid: false, expires at: 1772532982227
+[debug] [2026-03-03T15:04:26.836Z] Checked if tokens are valid: false, expires at: 1772532982227
+[debug] [2026-03-03T15:04:26.836Z] > refreshing access token with scopes: []
+[debug] [2026-03-03T15:04:26.837Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-03T15:04:26.837Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-03T15:04:26.982Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-03T15:04:26.982Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-03T15:04:26.996Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions [none]
+[debug] [2026-03-03T15:04:26.997Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions  x-goog-user-project=gkias-website-db
+[debug] [2026-03-03T15:04:26.997Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-03T15:04:27.317Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions 200
+[debug] [2026-03-03T15:04:27.317Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-03T15:04:27.318Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:27.318Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:27.319Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db [none]
+[debug] [2026-03-03T15:04:27.981Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db 200
+[debug] [2026-03-03T15:04:27.981Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db {"projectId":"gkias-website-db","projectNumber":"613670630772","displayName":"gkias-website-db","name":"projects/gkias-website-db","resources":{"hostingSite":"gkias-website-db"},"state":"ACTIVE","etag":"1_480d3e2e-e2e5-4be5-b4bd-ee4c6cbca2b5"}
+[debug] [2026-03-03T15:04:28.513Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:28.513Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:28.513Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites pageToken=&pageSize=10
+[debug] [2026-03-03T15:04:29.456Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites 200
+[debug] [2026-03-03T15:04:29.456Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites {"sites":[{"name":"projects/gkias-website-db/sites/gkias-website-db","defaultUrl":"https://gkias-website-db.web.app","type":"DEFAULT_SITE"}]}
+[debug] [2026-03-03T15:04:29.457Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:29.457Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:29.457Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites 
+[debug] [2026-03-03T15:04:30.148Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites 200
+[debug] [2026-03-03T15:04:30.149Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites {"sites":[{"name":"projects/gkias-website-db/sites/gkias-website-db","defaultUrl":"https://gkias-website-db.web.app","type":"DEFAULT_SITE"}]}
+[debug] [2026-03-03T15:04:30.149Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:30.149Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:30.149Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db/webApps/-/config [none]
+[debug] [2026-03-03T15:04:30.972Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db/webApps/-/config 200
+[debug] [2026-03-03T15:04:30.972Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db/webApps/-/config {"projectId":"gkias-website-db","appId":"1:613670630772:web:cb5320439ef3bb77ef2821","storageBucket":"gkias-website-db.firebasestorage.app","apiKey":"AIzaSyBQgUDdBohfNEPNhl2mTHfpDzc3aj1A2oM","authDomain":"gkias-website-db.firebaseapp.com","messagingSenderId":"613670630772","projectNumber":"613670630772","version":"2"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+   The integration is known to work with Next.js version 12 - 15.0. You may encounter errors.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2026-03-03T15:04:31.985Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:31.985Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:31.985Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites/gkias-website-db [none]
+[debug] [2026-03-03T15:04:32.460Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites/gkias-website-db 200
+[debug] [2026-03-03T15:04:32.460Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites/gkias-website-db {"name":"projects/gkias-website-db/sites/gkias-website-db","defaultUrl":"https://gkias-website-db.web.app","type":"DEFAULT_SITE"}
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] ▲ Next.js 16.1.6 (Turbopack)
+
+[info] - Environments: .env.local
+
+
+[info]   Creating an optimized production build ...
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] ✓ Compiled successfully in 1805.6ms
+
+[info]   Running TypeScript ...
+
+[info]   Collecting page data using 9 workers ...
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info] [baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+[info]   Generating static pages using 9 workers (0/6) ...
+
+[info]   Generating static pages using 9 workers (1/6) 
+
+[info]   Generating static pages using 9 workers (2/6) 
+
+[info]   Generating static pages using 9 workers (4/6) 
+
+[info] ✓ Generating static pages using 9 workers (6/6) in 239.7ms
+
+[info]   Finalizing page optimization ...
+
+[info] 
+
+[info] Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /about-us
+├ ○ /admin
+├ ○ /admin/login
+├ ƒ /kebaktian
+├ ƒ /lfjkids
+├ ƒ /news
+└ ƒ /news/[id]
+
+
+[info] 
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+[info] Building a Cloud Function to run this application. This is needed due to:
+[info]  • Image Optimization
+[info]  • non-static component /kebaktian/page
+[info]  • non-static component /lfjkids/page
+[info]  • non-static component /news/[id]/page
+[info]  • non-static component /news/page
+[debug] [2026-03-03T15:04:37.380Z]  • non-static component /page
+[info]  • and 1 other reasons, use --debug to see more
+[info] 
+[debug] [2026-03-03T15:04:38.371Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:38.371Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:38.371Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites/gkias-website-db [none]
+[debug] [2026-03-03T15:04:39.140Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites/gkias-website-db 200
+[debug] [2026-03-03T15:04:39.140Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/gkias-website-db/sites/gkias-website-db {"name":"projects/gkias-website-db/sites/gkias-website-db","defaultUrl":"https://gkias-website-db.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-03-03T15:04:55.720Z] [web frameworks] effective firebase.json:  {
+  "hosting": [
+    {
+      "source": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "frameworksBackend": {
+        "region": "asia-east1"
+      },
+      "site": "gkias-website-db",
+      "rewrites": [
+        {
+          "source": "**",
+          "function": {
+            "functionId": "ssrgkiaswebsitedb",
+            "region": "asia-east1",
+            "pinTag": true
+          }
+        }
+      ],
+      "redirects": [],
+      "headers": [
+        {
+          "source": "/_global-error",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "300"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/_global-error/layout,_N_T_/_global-error/page,_N_T_/_global-error"
+            }
+          ]
+        },
+        {
+          "source": "/_not-found",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "300"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/_not-found/layout,_N_T_/_not-found/page,_N_T_/_not-found"
+            }
+          ]
+        },
+        {
+          "source": "/admin",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "300"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/page,_N_T_/admin"
+            }
+          ]
+        },
+        {
+          "source": "/about-us",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "300"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/about-us/layout,_N_T_/about-us/page,_N_T_/about-us"
+            }
+          ]
+        },
+        {
+          "source": "/admin/login",
+          "headers": [
+            {
+              "key": "x-nextjs-stale-time",
+              "value": "300"
+            },
+            {
+              "key": "x-nextjs-prerender",
+              "value": "1"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/admin/layout,_N_T_/admin/login/layout,_N_T_/admin/login/page,_N_T_/admin/login"
+            }
+          ]
+        },
+        {
+          "source": "/favicon.ico",
+          "headers": [
+            {
+              "key": "cache-control",
+              "value": "public, max-age=0, must-revalidate"
+            },
+            {
+              "key": "content-type",
+              "value": "image/x-icon"
+            },
+            {
+              "key": "x-next-cache-tags",
+              "value": "_N_T_/layout,_N_T_/favicon.ico/layout,_N_T_/favicon.ico/route,_N_T_/favicon.ico"
+            }
+          ]
+        },
+        {
+          "source": "**/*.[jt]s",
+          "headers": [
+            {
+              "key": "Set-Cookie",
+              "value": "__FIREBASE_DEFAULTS__=eyJjb25maWciOnsicHJvamVjdElkIjoiZ2tpYXMtd2Vic2l0ZS1kYiIsImFwcElkIjoiMTo2MTM2NzA2MzA3NzI6d2ViOmNiNTMyMDQzOWVmM2JiNzdlZjI4MjEiLCJzdG9yYWdlQnVja2V0IjoiZ2tpYXMtd2Vic2l0ZS1kYi5maXJlYmFzZXN0b3JhZ2UuYXBwIiwiYXBpS2V5IjoiQUl6YVN5QlFnVURkQm9oZk5FUE5obDJtVEhmcER6YzNhajFBMm9NIiwiYXV0aERvbWFpbiI6ImdraWFzLXdlYnNpdGUtZGIuZmlyZWJhc2VhcHAuY29tIiwibWVzc2FnaW5nU2VuZGVySWQiOiI2MTM2NzA2MzA3NzIiLCJwcm9qZWN0TnVtYmVyIjoiNjEzNjcwNjMwNzcyIiwidmVyc2lvbiI6IjIifSwiX2F1dGhUb2tlblN5bmNVUkwiOiIvX19zZXNzaW9uIn0; SameSite=Strict; Expires=2028-01-27T01:44:55.720Z; Path=/;"
+            }
+          ]
+        }
+      ],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "public": ".firebase/gkias-website-db/hosting",
+      "webFramework": "next_ssr"
+    }
+  ],
+  "functions": [
+    {
+      "source": ".firebase/gkias-website-db/functions",
+      "codebase": "firebase-frameworks-gkias-website-db"
+    }
+  ]
+}
+[debug] [2026-03-03T15:04:55.721Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-03T15:04:55.721Z] > authorizing via signed-in user (bryantaryadi25@gmail.com)
+[debug] [2026-03-03T15:04:55.721Z] [iam] checking project gkias-website-db for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-03-03T15:04:55.721Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:55.721Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:55.721Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions [none]
+[debug] [2026-03-03T15:04:55.721Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions  x-goog-user-project=gkias-website-db
+[debug] [2026-03-03T15:04:55.721Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-03-03T15:04:56.880Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions 200
+[debug] [2026-03-03T15:04:56.880Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'gkias-website-db'...
+[info] 
+[info] i  deploying functions, hosting 
+[debug] [2026-03-03T15:04:56.883Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:56.883Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:56.883Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db [none]
+[debug] [2026-03-03T15:04:57.165Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db 200
+[debug] [2026-03-03T15:04:57.165Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db {"projectNumber":"613670630772","projectId":"gkias-website-db","lifecycleState":"ACTIVE","name":"gkias-website-db","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-11-17T13:55:28.604415Z"}
+[info] i  functions: preparing codebase firebase-frameworks-gkias-website-db for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-03-03T15:04:57.167Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:57.167Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:57.167Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db/adminSdkConfig [none]
+[debug] [2026-03-03T15:04:58.074Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db/adminSdkConfig 200
+[debug] [2026-03-03T15:04:58.074Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/gkias-website-db/adminSdkConfig {"projectId":"gkias-website-db","storageBucket":"gkias-website-db.firebasestorage.app"}
+[debug] [2026-03-03T15:04:58.074Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:58.074Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:04:58.074Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/gkias-website-db/configs [none]
+[debug] [2026-03-03T15:04:59.253Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/gkias-website-db/configs 200
+[debug] [2026-03-03T15:04:59.253Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/gkias-website-db/configs {}
+[debug] [2026-03-03T15:04:59.255Z] Validating nodejs source
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[warn] ⚠  functions: Please note that there will be breaking changes when you upgrade. 
+[debug] [2026-03-03T15:04:59.479Z] > [functions] package.json contents: {
+  "name": "gkias_website",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "firebase": "^12.6.0",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "sharp": "^0.32 || ^0.33",
+    "firebase-frameworks": "^0.11.0",
+    "firebase-functions": "^6.0.1",
+    "firebase-admin": "^11.11.1"
+  },
+  "main": "server.js",
+  "engines": {
+    "node": "24"
+  }
+}
+[debug] [2026-03-03T15:04:59.479Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase firebase-frameworks-gkias-website-db to determine what to deploy 
+[debug] [2026-03-03T15:04:59.479Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-03-03T15:04:59.482Z] Found firebase-functions binary at '/Users/bryantaryadi/Documents/GKI Alsut/gkias_website/gkias_website/.firebase/gkias-website-db/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8122
+
+[debug] [2026-03-03T15:04:59.663Z] Got response from /__/functions.yaml {"endpoints":{"ssrgkiaswebsitedb":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["asia-east1"],"labels":{},"httpsTrigger":{},"entryPoint":"ssrgkiaswebsitedb"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2026-03-03T15:05:03.676Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-03T15:05:03.676Z] > authorizing via signed-in user (bryantaryadi25@gmail.com)
+[debug] [2026-03-03T15:05:03.676Z] [iam] checking project gkias-website-db for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2026-03-03T15:05:03.676Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:03.676Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:03.676Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions [none]
+[debug] [2026-03-03T15:05:03.676Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions  x-goog-user-project=gkias-website-db
+[debug] [2026-03-03T15:05:03.676Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-03-03T15:05:04.127Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions 200
+[debug] [2026-03-03T15:05:04.127Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-03-03T15:05:04.128Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:04.128Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:04.128Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/gkias-website-db/instances pageSize=100&pageToken=
+[debug] [2026-03-03T15:05:05.408Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/gkias-website-db/instances 200
+[debug] [2026-03-03T15:05:05.408Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/gkias-website-db/instances {}
+[info] i  functions: Loaded environment variables from .env. 
+[info] i  functions: preparing .firebase/gkias-website-db/functions directory for uploading... 
+[info] i  functions: packaged /Users/bryantaryadi/Documents/GKI Alsut/gkias_website/gkias_website/.firebase/gkias-website-db/functions (475.8 MB) for uploading 
+[debug] [2026-03-03T15:05:18.242Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:18.242Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:18.242Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/gkias-website-db/locations/-/functions [none]
+[debug] [2026-03-03T15:05:19.415Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/gkias-website-db/locations/-/functions 200
+[debug] [2026-03-03T15:05:19.415Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/gkias-website-db/locations/-/functions {}
+[debug] [2026-03-03T15:05:19.416Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:19.416Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:19.416Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/gkias-website-db/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-03-03T15:05:21.052Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/gkias-website-db/locations/-/functions 200
+[debug] [2026-03-03T15:05:21.052Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/gkias-website-db/locations/-/functions {"functions":[{"name":"projects/gkias-website-db/locations/asia-east1/functions/ssrgkiaswebsitedb","buildConfig":{"build":"projects/613670630772/locations/asia-east1/builds/18e88ad9-84d2-42fe-89d7-7598cc711582","runtime":"nodejs24","entryPoint":"ssrgkiaswebsitedb","source":{"storageSource":{"bucket":"gcf-v2-sources-613670630772-asia-east1","object":"ssrgkiaswebsitedb/function-source.zip","generation":"1772529823635238"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/gkias-website-db/locations/asia-east1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-613670630772-asia-east1","object":"ssrgkiaswebsitedb/function-source.zip","generation":"1772529823635238"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/gkias-website-db/serviceAccounts/613670630772-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/gkias-website-db/locations/asia-east1/services/ssrgkiaswebsitedb","timeoutSeconds":60,"environmentVariables":{"VERCEL_URL":"gkias-website-db.web.app","__FIREBASE_FRAMEWORKS_ENTRY__":"next.js","__FIREBASE_DEFAULTS__":"{\"config\":{\"projectId\":\"gkias-website-db\",\"appId\":\"1:613670630772:web:cb5320439ef3bb77ef2821\",\"storageBucket\":\"gkias-website-db.firebasestorage.app\",\"apiKey\":\"AIzaSyBQgUDdBohfNEPNhl2mTHfpDzc3aj1A2oM\",\"authDomain\":\"gkias-website-db.firebaseapp.com\",\"messagingSenderId\":\"613670630772\",\"projectNumber\":\"613670630772\",\"version\":\"2\"},\"_authTokenSyncURL\":\"/__session\"}","FIREBASE_CONFIG":"{\"projectId\":\"gkias-website-db\",\"storageBucket\":\"gkias-website-db.firebasestorage.app\"}","GCLOUD_PROJECT":"gkias-website-db","EVENTARC_CLOUD_EVENT_SOURCE":"projects/gkias-website-db/locations/asia-east1/services/ssrgkiaswebsitedb","FUNCTION_TARGET":"ssrgkiaswebsitedb","LOG_EXECUTION_ID":"true"},"maxInstanceCount":20,"ingressSettings":"ALLOW_ALL","uri":"https://ssrgkiaswebsitedb-e2caxhhfaq-de.a.run.app","serviceAccountEmail":"613670630772-compute@developer.gserviceaccount.com","availableMemory":"256Mi","allTrafficOnLatestRevision":true,"revision":"ssrgkiaswebsitedb-00023-gaz","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"ACTIVE","updateTime":"2026-03-03T09:28:19.559326100Z","labels":{"firebase-functions-codebase":"firebase-frameworks-gkias-website-db","firebase-functions-hash":"9d875e264f72408fa24a1dcc680e4ab324ab1f35","deployment-tool":"cli-firebase"},"environment":"GEN_2","url":"https://asia-east1-gkias-website-db.cloudfunctions.net/ssrgkiaswebsitedb","createTime":"2025-11-19T08:16:37.281663081Z","satisfiesPzi":true}]}
+[info] i  functions: ensuring required API run.googleapis.com is enabled... 
+[info] i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+[info] i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+[info] i  functions: ensuring required API storage.googleapis.com is enabled... 
+[info] i  functions: generating the service identity for pubsub.googleapis.com... 
+[debug] [2026-03-03T15:05:21.054Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:21.054Z] Checked if tokens are valid: true, expires at: 1772553865982
+[info] i  functions: generating the service identity for eventarc.googleapis.com... 
+[debug] [2026-03-03T15:05:21.054Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:21.054Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:21.054Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/pubsub.googleapis.com:generateServiceIdentity [none]
+[debug] [2026-03-03T15:05:21.054Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/pubsub.googleapis.com:generateServiceIdentity  x-goog-user-project=613670630772
+[debug] [2026-03-03T15:05:21.054Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/pubsub.googleapis.com:generateServiceIdentity {}
+[debug] [2026-03-03T15:05:21.054Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/eventarc.googleapis.com:generateServiceIdentity [none]
+[debug] [2026-03-03T15:05:21.054Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/eventarc.googleapis.com:generateServiceIdentity  x-goog-user-project=613670630772
+[debug] [2026-03-03T15:05:21.055Z] >>> [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/eventarc.googleapis.com:generateServiceIdentity {}
+[debug] [2026-03-03T15:05:22.584Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/pubsub.googleapis.com:generateServiceIdentity 200
+[debug] [2026-03-03T15:05:22.584Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/pubsub.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-613670630772@gcp-sa-pubsub.iam.gserviceaccount.com","uniqueId":"116069961517211220827"}}
+[debug] [2026-03-03T15:05:22.584Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/eventarc.googleapis.com:generateServiceIdentity 200
+[debug] [2026-03-03T15:05:22.584Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1beta1/projects/613670630772/services/eventarc.googleapis.com:generateServiceIdentity {"name":"operations/finished.DONE_OPERATION","done":true,"response":{"@type":"type.googleapis.com/google.api.serviceusage.v1beta1.ServiceIdentity","email":"service-613670630772@gcp-sa-eventarc.iam.gserviceaccount.com","uniqueId":"116558893152592566506"}}
+[debug] [2026-03-03T15:05:22.585Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:22.585Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:22.585Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db [none]
+[debug] [2026-03-03T15:05:22.936Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db 200
+[debug] [2026-03-03T15:05:22.936Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/gkias-website-db {"projectNumber":"613670630772","projectId":"gkias-website-db","lifecycleState":"ACTIVE","name":"gkias-website-db","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-11-17T13:55:28.604415Z"}
+[debug] [2026-03-03T15:05:22.936Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:22.936Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:22.936Z] >>> [apiv2][query] GET https://compute.googleapis.com/compute/v1/projects/613670630772 [none]
+[debug] [2026-03-03T15:05:23.331Z] <<< [apiv2][status] GET https://compute.googleapis.com/compute/v1/projects/613670630772 403
+[debug] [2026-03-03T15:05:23.331Z] <<< [apiv2][body] GET https://compute.googleapis.com/compute/v1/projects/613670630772 {"error":{"code":403,"message":"Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"service":"compute.googleapis.com","consumer":"projects/613670630772","containerInfo":"613670630772","serviceTitle":"Compute Engine API","activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772"}]}]}}
+[debug] [2026-03-03T15:05:23.332Z] unable to look up default compute service account. Falling back to 613670630772-compute@developer.gserviceaccount.com. Error: {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":403,"message":"Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","errors":[{"message":"Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","domain":"usageLimits","reason":"accessNotConfigured","extendedHelp":"https://console.developers.google.com"}],"status":"PERMISSION_DENIED","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"SERVICE_DISABLED","domain":"googleapis.com","metadata":{"service":"compute.googleapis.com","consumer":"projects/613670630772","containerInfo":"613670630772","serviceTitle":"Compute Engine API","activationUrl":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry."},{"@type":"type.googleapis.com/google.rpc.Help","links":[{"description":"Google developers console API activation","url":"https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772"}]}]}},"response":{"statusCode":403}},"exit":1,"message":"Request to https://compute.googleapis.com/compute/v1/projects/613670630772 had HTTP Error: 403, Compute Engine API has not been used in project 613670630772 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/compute.googleapis.com/overview?project=613670630772 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.","status":403}
+[debug] [2026-03-03T15:05:23.334Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:23.334Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:23.334Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/gkias-website-db/versions [none]
+[debug] [2026-03-03T15:05:23.334Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/gkias-website-db/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase","firebase-web-framework":"next_ssr"}}
+[debug] [2026-03-03T15:05:24.784Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/gkias-website-db/versions 200
+[debug] [2026-03-03T15:05:24.784Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/gkias-website-db/versions {"name":"projects/613670630772/sites/gkias-website-db/versions/fed0415e29453731","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase","firebase-web-framework":"next_ssr"}}
+[debug] [2026-03-03T15:05:24.785Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:24.785Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:24.785Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/gkias-website-db/billingInfo [none]
+[debug] [2026-03-03T15:05:26.378Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/gkias-website-db/billingInfo 200
+[debug] [2026-03-03T15:05:26.378Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/gkias-website-db/billingInfo {"name":"projects/gkias-website-db/billingInfo","projectId":"gkias-website-db","billingAccountName":"billingAccounts/01702C-F3DC36-135669","billingEnabled":true}
+[debug] [2026-03-03T15:05:26.379Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:26.379Z] Checked if tokens are valid: true, expires at: 1772553865982
+[debug] [2026-03-03T15:05:26.379Z] >>> [apiv2][query] POST https://cloudfunctions.googleapis.com/v2/projects/gkias-website-db/locations/asia-east1/functions:generateUploadUrl [none]
+[debug] [2026-03-03T15:05:26.934Z] <<< [apiv2][status] POST https://cloudfunctions.googleapis.com/v2/projects/gkias-website-db/locations/asia-east1/functions:generateUploadUrl 200
+[debug] [2026-03-03T15:05:26.934Z] <<< [apiv2][body] POST https://cloudfunctions.googleapis.com/v2/projects/gkias-website-db/locations/asia-east1/functions:generateUploadUrl {"uploadUrl":"https://storage.googleapis.com/gcf-v2-uploads-613670630772.asia-east1.cloudfunctions.appspot.com/04e68306-f319-4055-b04a-f0af783b59a6.zip?GoogleAccessId=service-613670630772@gcf-admin-robot.iam.gserviceaccount.com&Expires=1772552126&Signature=V50afvqpRdWz6inzi8xm7h9Zmdu3RS6rScVfL1eR%2BH9%2BM4tz4gww9hyBDZ0qPAUl8RyKFPIwmpc55ns45wcRZdAitk2DFyhIG9X4buo9vucjIuFa%2Br5u3aPI5PGSlOZ%2F2Q8tur5ArRkFJ8eohr2b3eLTUGOLcpAfyzfHX4rK4EKT%2BXWPUsS1zHamVInPubYHM9oJ1ciResk2Vb2njXnEjizAt%2BY5pw2fF%2FMVLNJ25s6EJciIhnQCYFifYf0SO%2F%2BhjtOmLUAfhm06JLUR2tvWBFjRD4zMlHrMJgSFS8aWFVaCoi7wVbqxx5WzTVpQ5KJqJxxPhDJy35xLNcjnX49%2BNA%3D%3D","storageSource":{"bucket":"gcf-v2-uploads-613670630772.asia-east1.cloudfunctions.appspot.com","object":"04e68306-f319-4055-b04a-f0af783b59a6.zip"}}
+[debug] [2026-03-03T15:05:26.934Z] >>> [apiv2][query] PUT https://storage.googleapis.com/gcf-v2-uploads-613670630772.asia-east1.cloudfunctions.appspot.com/04e68306-f319-4055-b04a-f0af783b59a6.zip GoogleAccessId=service-613670630772%40gcf-admin-robot.iam.gserviceaccount.com&Expires=1772552126&Signature=V50afvqpRdWz6inzi8xm7h9Zmdu3RS6rScVfL1eR%2BH9%2BM4tz4gww9hyBDZ0qPAUl8RyKFPIwmpc55ns45wcRZdAitk2DFyhIG9X4buo9vucjIuFa%2Br5u3aPI5PGSlOZ%2F2Q8tur5ArRkFJ8eohr2b3eLTUGOLcpAfyzfHX4rK4EKT%2BXWPUsS1zHamVInPubYHM9oJ1ciResk2Vb2njXnEjizAt%2BY5pw2fF%2FMVLNJ25s6EJciIhnQCYFifYf0SO%2F%2BhjtOmLUAfhm06JLUR2tvWBFjRD4zMlHrMJgSFS8aWFVaCoi7wVbqxx5WzTVpQ5KJqJxxPhDJy35xLNcjnX49%2BNA%3D%3D
+[debug] [2026-03-03T15:05:26.934Z] >>> [apiv2][body] PUT https://storage.googleapis.com/gcf-v2-uploads-613670630772.asia-east1.cloudfunctions.appspot.com/04e68306-f319-4055-b04a-f0af783b59a6.zip [stream]

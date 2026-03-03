@@ -26,14 +26,15 @@ export default function PhotoSection({ title, description, imageUrls = [] }: Pho
   }, [imageUrls]);
 
   // Parallax effect - track scroll position
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
+  // di disable cuz error cui
+  // useEffect(() => {
+  //   const handleScroll = () => {
+  //     setScrollY(window.scrollY);
+  //   };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  //   window.addEventListener('scroll', handleScroll);
+  //   return () => window.removeEventListener('scroll', handleScroll);
+  // }, []);
 
   // Fallback if no images are uploaded yet
   const displayImages = Array.isArray(imageUrls)
