@@ -61,7 +61,7 @@ export default function NewsPageHeader({ heroImageUrls, title = "Warta Jemaat & 
         </div>
       ))}
 
-{/* overlay layer */}
+      {/* overlay layer */}
       <div className="absolute inset-0 bg-black opacity-50 z-10"></div>
     </section>
   );

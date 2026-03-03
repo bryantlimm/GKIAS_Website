@@ -54,7 +54,12 @@ export default function PhotoSectionEditor() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) 
+        return (
+    <div className="p-10 bg-gray-100 text-center">
+      <p>Debug: PhotoSection data received, but imageUrls is empty.</p>
+    </div>
+    );
 
     setIsUploading(true);
     setStatusMessage({ type: '', message: '' });

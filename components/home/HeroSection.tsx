@@ -32,7 +32,6 @@ export default function HeroSection({ heroTitle, heroImageUrls, schedules }: Her
   }, [heroImageUrls]);
 
   // Fallback in case no images exist
-  // const displayImages = heroImageUrls?.length > 0 ? heroImageUrls : ['/placeholder-hero.jpg'];
   const displayImages = Array.isArray(heroImageUrls) 
   ? heroImageUrls 
   : (typeof heroImageUrls === 'string' && heroImageUrls !== '' 
