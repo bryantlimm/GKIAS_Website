@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import LfjCarousel from '@/components/lfjkids/LfjCarousel';
+import BusScene from '@/components/lfjkids/BusScene';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LfjKidsPage() {
   let carouselData = {
     imageUrls: [],
-    cloudText: 'Join us every\nSunday 10am' // Default fallback
+    cloudText: 'Join us every\nSunday 10am' // Default
   };
 
   try {
@@ -28,7 +29,7 @@ export default async function LfjKidsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FFFDF6] relative overflow-hidden pb-32 pt-12 md:pt-12">
+    <main className="min-h-screen bg-[#FFFDF6] relative overflow-hidden pb-0 pt-12 md:pt-12">
       
       {/* HEADER: Back Button & Logos */}
       <div className="relative pt-8 px-6 md:px-12 flex items-start justify-center z-20">
@@ -77,6 +78,10 @@ export default async function LfjKidsPage() {
         />
       </div>
 
+      {/* bus gacor */}
+      <div className="relative z-10">
+        <BusScene />
+    </div>
     </main>
   );
 }
