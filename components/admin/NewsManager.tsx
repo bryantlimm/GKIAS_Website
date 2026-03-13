@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent, useRef } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -13,43 +13,172 @@ interface NewsItem {
   title: string;
   body: string;
   imageUrl: string;
-  pdfUrl?: string; // Optional PDF URL
+  pdfUrl?: string;
   date: Timestamp;
 }
 
+// ─── Icons ────────────────────────────────────────────────────────────────────
+
+const PlusIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+    <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+    <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+  </svg>
+);
+
+const PdfIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    <polyline points="10 9 9 9 8 9"/>
+  </svg>
+);
+
+const ImageIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>
+);
+
+const XIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      {children}
+    </label>
+  );
+}
+
+function StatusToast({ type, message }: { type: 'success' | 'error' | ''; message: string }) {
+  if (!message) return null;
+  const isSuccess = type === 'success';
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '12px 16px',
+      borderRadius: 10,
+      background: isSuccess ? '#f0fdf4' : '#fff5f5',
+      border: `1.5px solid ${isSuccess ? '#bbf7d0' : '#fecaca'}`,
+      color: isSuccess ? '#16a34a' : '#dc2626',
+      fontSize: 13, fontWeight: 600,
+      marginBottom: 20,
+    }}>
+      <span>{isSuccess ? <CheckIcon /> : <XIcon />}</span>
+      {message}
+    </div>
+  );
+}
+
+function FileDropZone({
+  label, accept, hint, file, existingUrl, existingLabel,
+  onChange,
+}: {
+  label: string; accept: string; hint: string;
+  file: File | null; existingUrl: string; existingLabel: string;
+  onChange: (f: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const hasFile = file || existingUrl;
+
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div
+        onClick={() => inputRef.current?.click()}
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) onChange(f); }}
+        style={{
+          border: `2px dashed ${dragging ? '#3b5bdb' : hasFile ? '#bbf7d0' : '#e2e8f0'}`,
+          borderRadius: 10,
+          padding: '18px 16px',
+          textAlign: 'center',
+          cursor: 'pointer',
+          background: dragging ? '#eff3ff' : hasFile ? '#f0fdf4' : '#f8fafc',
+          transition: 'all 0.2s',
+        }}
+      >
+        <div style={{ color: hasFile ? '#16a34a' : '#94a3b8', marginBottom: 6, display: 'flex', justifyContent: 'center' }}>
+          {hasFile ? <CheckIcon /> : <UploadIcon />}
+        </div>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: hasFile ? '#16a34a' : '#64748b' }}>
+          {file ? file.name : existingUrl ? existingLabel : `Klik atau drag & drop`}
+        </p>
+        <p style={{ margin: '3px 0 0', fontSize: 11, color: '#94a3b8' }}>{hint}</p>
+      </div>
+      <input ref={inputRef} type="file" accept={accept} style={{ display: 'none' }}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => e.target.files && onChange(e.target.files[0])} />
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function NewsManager() {
-    const router = useRouter();
+  const router = useRouter();
 
   const [newsList, setNewsList] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | '', message: string }>({ type: '', message: '' });
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
+  const [showForm, setShowForm] = useState(false);
 
-  // Form State
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  
-  // Image State
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState('');
-
-  // PDF State (NEW)
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [existingPdfUrl, setExistingPdfUrl] = useState('');
 
-  const newsCollectionRef = collection(db, "news");
+  const newsCollectionRef = collection(db, 'news');
 
   const fetchNews = async () => {
     setLoading(true);
     try {
-      const q = query(newsCollectionRef, orderBy("date", "desc"));
-      const querySnapshot = await getDocs(q);
-      const fetchedNews = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as NewsItem[];
-      setNewsList(fetchedNews);
-    } catch (error) {
-      console.error("Error fetching news:", error);
+      const q = query(newsCollectionRef, orderBy('date', 'desc'));
+      const snapshot = await getDocs(q);
+      setNewsList(snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as NewsItem[]);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -57,183 +186,298 @@ export default function NewsManager() {
 
   useEffect(() => { fetchNews(); }, []);
 
-  // Helper to upload files
   const handleFileUpload = async (file: File, path: string): Promise<string> => {
     const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
     await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
+    return getDownloadURL(storageRef);
   };
 
   const resetForm = () => {
-    setTitle('');
-    setBody('');
-    setImageFile(null);
-    setExistingImageUrl('');
-    setPdfFile(null); // Reset PDF
-    setExistingPdfUrl(''); // Reset PDF
-    setIsEditing(false);
-    setEditId(null);
+    setTitle(''); setBody('');
+    setImageFile(null); setExistingImageUrl('');
+    setPdfFile(null); setExistingPdfUrl('');
+    setIsEditing(false); setEditId(null);
+    setShowForm(false);
   };
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setIsSaving(true);
-        setStatusMessage({ type: '', message: '' });
-
-        try {
-        let finalImageUrl = existingImageUrl;
-        let finalPdfUrl = existingPdfUrl;
-
-        // Upload Image if new one selected
-        if (imageFile) {
-            finalImageUrl = await handleFileUpload(imageFile, 'news_images');
-        }
-
-        // Upload PDF if new one selected (NEW)
-        if (pdfFile) {
-            finalPdfUrl = await handleFileUpload(pdfFile, 'news_pdfs');
-        }
-
-        const newsData = {
-            title,
-            body,
-            imageUrl: finalImageUrl || "https://picsum.photos/600/400",
-            pdfUrl: finalPdfUrl || "", // Save PDF URL
-            date: Timestamp.now(),
-        };
-
-        if (isEditing && editId) {
-            const newsDoc = doc(db, "news", editId);
-            await updateDoc(newsDoc, newsData as unknown as Record<string, unknown>);
-            setStatusMessage({ type: 'success', message: 'Berita berhasil diperbarui!' });
-        } else {
-            await addDoc(newsCollectionRef, newsData);
-            setStatusMessage({ type: 'success', message: 'Berita baru berhasil diterbitkan!' });
-        }
-        router.refresh();
-
-        await fetchNews();
-        resetForm();
-
-        } catch (error) {
-        console.error("Error saving news:", error);
-        setStatusMessage({ type: 'error', message: 'Gagal menyimpan berita.' });
-        } finally {
-        setIsSaving(false);
-        setTimeout(() => setStatusMessage({ type: '', message: '' }), 5000);
-        }
-    };
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setStatusMessage({ type: '', message: '' });
+    try {
+      const finalImageUrl = imageFile ? await handleFileUpload(imageFile, 'news_images') : existingImageUrl;
+      const finalPdfUrl = pdfFile ? await handleFileUpload(pdfFile, 'news_pdfs') : existingPdfUrl;
+      const newsData = {
+        title, body,
+        imageUrl: finalImageUrl || 'https://picsum.photos/600/400',
+        pdfUrl: finalPdfUrl || '',
+        date: Timestamp.now(),
+      };
+      if (isEditing && editId) {
+        await updateDoc(doc(db, 'news', editId), newsData as unknown as Record<string, unknown>);
+        setStatusMessage({ type: 'success', message: 'Berita berhasil diperbarui!' });
+      } else {
+        await addDoc(newsCollectionRef, newsData);
+        setStatusMessage({ type: 'success', message: 'Berita berhasil diterbitkan!' });
+      }
+      router.refresh();
+      await fetchNews();
+      resetForm();
+    } catch (e) {
+      console.error(e);
+      setStatusMessage({ type: 'error', message: 'Gagal menyimpan berita.' });
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setStatusMessage({ type: '', message: '' }), 5000);
+    }
+  };
 
   const handleEditClick = (item: NewsItem) => {
-    setIsEditing(true);
-    setEditId(item.id);
-    setTitle(item.title);
-    setBody(item.body || '');
-    setExistingImageUrl(item.imageUrl);
-    setExistingPdfUrl(item.pdfUrl || ''); // Load existing PDF
-    setImageFile(null);
-    setPdfFile(null);
+    setIsEditing(true); setEditId(item.id);
+    setTitle(item.title); setBody(item.body || '');
+    setExistingImageUrl(item.imageUrl); setExistingPdfUrl(item.pdfUrl || '');
+    setImageFile(null); setPdfFile(null);
+    setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Hapus berita ini?")) return;
+    if (!window.confirm('Hapus berita ini?')) return;
     try {
-      await deleteDoc(doc(db, "news", id));
-      setNewsList(prev => prev.filter(item => item.id !== id));
+      await deleteDoc(doc(db, 'news', id));
+      setNewsList(prev => prev.filter(i => i.id !== id));
       setStatusMessage({ type: 'success', message: 'Berita dihapus.' });
-    } catch (error) {
+      setTimeout(() => setStatusMessage({ type: '', message: '' }), 3000);
+    } catch {
       setStatusMessage({ type: 'error', message: 'Gagal menghapus.' });
     }
   };
 
-  // Common class for inputs with Dark Text
-  const inputClass = "w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900";
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px',
+    border: '1.5px solid #e2e8f0', borderRadius: 8,
+    fontSize: 14, color: '#1e293b',
+    background: '#fff', outline: 'none',
+    fontFamily: 'inherit', boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  };
+
+  const formatDate = (ts: Timestamp) =>
+    ts?.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <div className="bg-white space-y-8">
-      {statusMessage.message && (
-        <div className={`p-4 rounded-lg text-white font-medium ${statusMessage.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-          {statusMessage.message}
+    <div style={{ fontFamily: "'Nunito', sans-serif" }}>
+      <StatusToast type={statusMessage.type} message={statusMessage.message} />
+
+      {/* ── Header row ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>
+            {loading ? 'Memuat...' : `${newsList.length} artikel`}
+          </p>
+        </div>
+        {!showForm && (
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '9px 16px',
+              background: '#3b5bdb', color: '#fff',
+              border: 'none', borderRadius: 8,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#2f4ac7')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#3b5bdb')}
+          >
+            <PlusIcon /> Tambah Berita
+          </button>
+        )}
+      </div>
+
+      {/* ── Form ── */}
+      {showForm && (
+        <div style={{
+          border: '1.5px solid #e2e8f0', borderRadius: 12,
+          marginBottom: 28, overflow: 'hidden',
+        }}>
+          {/* Form header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '14px 20px', background: '#f8fafc',
+            borderBottom: '1.5px solid #e2e8f0',
+          }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+              {isEditing ? '✏️  Edit Berita' : '✨  Tambah Berita Baru'}
+            </p>
+            <button
+              onClick={resetForm}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: 4 }}
+            >
+              <XIcon />
+            </button>
+          </div>
+
+          {/* Form body */}
+          <form onSubmit={handleSubmit} style={{ padding: '20px 20px 24px' }}>
+            <div style={{ marginBottom: 16 }}>
+              <FieldLabel>Judul Berita</FieldLabel>
+              <input
+                type="text" value={title} onChange={e => setTitle(e.target.value)}
+                placeholder="Masukkan judul berita..."
+                required style={inputStyle}
+                onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <FieldLabel>Konten / Deskripsi</FieldLabel>
+              <textarea
+                value={body} onChange={e => setBody(e.target.value)}
+                placeholder="Tulis isi berita di sini..."
+                rows={5} required
+                style={{ ...inputStyle, resize: 'vertical' }}
+                onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
+              <FileDropZone
+                label="Gambar (Opsional)"
+                accept="image/*"
+                hint="PNG, JPG hingga 5MB"
+                file={imageFile}
+                existingUrl={existingImageUrl}
+                existingLabel="Gambar terpasang"
+                onChange={setImageFile}
+              />
+              <FileDropZone
+                label="PDF (Opsional)"
+                accept="application/pdf"
+                hint="File PDF"
+                file={pdfFile}
+                existingUrl={existingPdfUrl}
+                existingLabel="PDF terpasang"
+                onChange={setPdfFile}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="submit" disabled={isSaving}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '10px 20px',
+                  background: isSaving ? '#93a3c7' : '#3b5bdb',
+                  color: '#fff', border: 'none', borderRadius: 8,
+                  fontSize: 13, fontWeight: 700, cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => { if (!isSaving) e.currentTarget.style.background = '#2f4ac7'; }}
+                onMouseLeave={e => { if (!isSaving) e.currentTarget.style.background = '#3b5bdb'; }}
+              >
+                {isSaving ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Terbitkan Berita'}
+              </button>
+              <button
+                type="button" onClick={resetForm}
+                style={{
+                  padding: '10px 16px',
+                  background: 'transparent', color: '#64748b',
+                  border: '1.5px solid #e2e8f0', borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                Batal
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
-      {/* FORM */}
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-700 mb-4">{isEditing ? 'Edit Berita' : 'Tambah Berita Baru'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Judul Berita</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} required />
-          </div>
+      {/* ── News list ── */}
+      {loading ? (
+        <div style={{ color: '#94a3b8', fontSize: 14, padding: '24px 0', textAlign: 'center' }}>Memuat berita...</div>
+      ) : newsList.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Belum ada berita</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13 }}>Klik Tambah Berita untuk membuat artikel pertama</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {newsList.map(item => (
+            <div
+              key={item.id}
+              style={{
+                display: 'flex', gap: 14, alignItems: 'center',
+                padding: '14px 16px',
+                border: '1.5px solid #e8ecf0', borderRadius: 10,
+                background: '#fff', transition: 'border-color 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = '#c7d2fe')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = '#e8ecf0')}
+            >
+              {/* Thumbnail */}
+              <div style={{ width: 56, height: 56, borderRadius: 8, overflow: 'hidden', background: '#f1f5f9', flexShrink: 0, position: 'relative' }}>
+                <Image src={item.imageUrl} alt={item.title} fill style={{ objectFit: 'cover' }} />
+              </div>
 
-          {/* Body */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Konten / Deskripsi</label>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className={inputClass} required />
-          </div>
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {item.title}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: '#94a3b8' }}>{formatDate(item.date)}</p>
+                  {item.pdfUrl && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#fff5f5', color: '#dc2626', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5 }}>
+                      <PdfIcon /> PDF
+                    </span>
+                  )}
+                </div>
+              </div>
 
-          {/* Image Upload */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Gambar (Opsional)</label>
-                {existingImageUrl && !imageFile && <div className="text-xs text-green-600 mb-1">✓ Gambar terpasang</div>}
-                <input 
-                    type="file" 
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => e.target.files && setImageFile(e.target.files[0])}
-                    accept="image/*"
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-            </div>
-
-            {/* PDF Upload */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload PDF (Opsional)</label>
-                {existingPdfUrl && !pdfFile && <div className="text-xs text-green-600 mb-1">✓ PDF terpasang</div>}
-                <input 
-                    type="file" 
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => e.target.files && setPdfFile(e.target.files[0])}
-                    accept="application/pdf" // Only accept PDF
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
-                />
-            </div>
-          </div>
-
-          <div className="flex space-x-3">
-            <button type="submit" disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow hover:bg-blue-700 transition disabled:opacity-50">
-              {isSaving ? 'Menyimpan...' : (isEditing ? 'Update Berita' : 'Terbitkan Berita')}
-            </button>
-            {isEditing && (
-              <button type="button" onClick={resetForm} className="px-6 py-2 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition">
-                Batal
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* LIST */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {newsList.map((item) => (
-          <div key={item.id} className="border border-gray-200 rounded-xl p-4 flex gap-4 bg-white items-start">
-            <div className="relative w-24 h-24 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
-              <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
-            </div>
-            <div className="flex-grow overflow-hidden">
-              <h4 className="font-bold text-lg text-gray-900 truncate">{item.title}</h4>
-              <p className="text-xs text-blue-600 mb-1">{item.date?.toDate().toLocaleDateString()}</p>
-              {/* Indicator if PDF exists */}
-              {item.pdfUrl && <span className="inline-block bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded mb-2">PDF Attached</span>}
-              <div className="mt-2 flex space-x-3">
-                <button onClick={() => handleEditClick(item)} className="text-sm text-blue-600 font-medium hover:underline">Edit</button>
-                <button onClick={() => handleDelete(item.id)} className="text-sm text-red-600 font-medium hover:underline">Hapus</button>
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button
+                  onClick={() => handleEditClick(item)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '7px 12px',
+                    background: '#f1f5f9', color: '#3b5bdb',
+                    border: '1.5px solid #e2e8f0', borderRadius: 7,
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#eff3ff'; e.currentTarget.style.borderColor = '#c7d2fe'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                >
+                  <EditIcon /> Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '7px 12px',
+                    background: '#fff5f5', color: '#dc2626',
+                    border: '1.5px solid #fecaca', borderRadius: 7,
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#dc2626'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fecaca'; }}
+                >
+                  <TrashIcon /> Hapus
+                </button>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
