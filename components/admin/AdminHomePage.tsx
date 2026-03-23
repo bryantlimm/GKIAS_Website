@@ -272,7 +272,6 @@ export default function AdminHomePage() {
 
   // ── Chart filter ──
   const [chartService, setChartService] = useState('all');
-  const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
   // ── Load data ──
   useEffect(() => {
@@ -593,53 +592,6 @@ export default function AdminHomePage() {
               <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>{upcomingEvents.length} event</p>
             </div>
             {/* Create dropdown */}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setCreateMenuOpen(v => !v)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '6px 12px',
-                  background: C.primary, color: '#fff',
-                  border: 'none', borderRadius: 7,
-                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                <PlusIconSmall /> Buat
-              </button>
-              {createMenuOpen && (
-                <>
-                  {/* Backdrop */}
-                  <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-                    onClick={() => setCreateMenuOpen(false)}
-                  />
-                  {/* Dropdown */}
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                    background: C.card, border: `1.5px solid ${C.border}`,
-                    borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-                    zIndex: 20, minWidth: 200, overflow: 'hidden',
-                  }}>
-                    <p style={{ margin: 0, padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                      Pilih jenis event
-                    </p>
-                    <CreateMenuOption
-                      label="Kebaktian"
-                      sub="Jadwal ibadah dengan petugas"
-                      href="/admin/create-service"
-                      onClick={() => setCreateMenuOpen(false)}
-                    />
-                    <CreateMenuOption
-                      label="Registrasi"
-                      sub="Form pendaftaran untuk acara"
-                      href="/admin/create-registration"
-                      onClick={() => setCreateMenuOpen(false)}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
           </div>
 
           {/* Event list */}
