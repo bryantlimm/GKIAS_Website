@@ -503,12 +503,6 @@ export default function AdminHomePage() {
   return (
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
 
-      {/* ── Page title ── */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}>Dashboard</h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: C.muted }}>Ringkasan data ibadah dan jemaat</p>
-      </div>
-
       {/* ══ SECTION 1: STAT CARDS ══════════════════════════════════════════ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
 
@@ -581,7 +575,7 @@ export default function AdminHomePage() {
         </Card>
 
         {/* Upcoming events */}
-        <Card style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Card style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 320  }}>
           {/* Panel header with create button */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -640,7 +634,7 @@ export default function AdminHomePage() {
                               border: `1px solid ${typeBorder}`,
                               borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', flexShrink: 0,
                             }}>
-                              {isReg ? 'REG' : 'IBADAH'}
+                              {isReg ? 'REGISTRASI' : 'IBADAH'}
                             </span>
                             {isPast && (
                               <span style={{ fontSize: 9, fontWeight: 700, color: C.warn, background: C.warnBg, border: `1px solid ${C.warnBorder}`, borderRadius: 4, padding: '1px 5px' }}>

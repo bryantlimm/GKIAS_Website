@@ -279,100 +279,91 @@ export default function AdminEventsPage() {
   return (
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
 
-      {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}>Events</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: C.muted }}>
-            {upcomingEvents.length} mendatang · {finishedEvents.length} selesai
-          </p>
-        </div>
-
-        {/* Create dropdown */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setCreateMenuOpen(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px',
-              background: C.primary, color: '#fff', border: 'none', borderRadius: 9,
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            <PlusIcon /> Buat Event
-          </button>
-          {createMenuOpen && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}
-                onClick={() => setCreateMenuOpen(false)} />
-              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 10,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 51, minWidth: 210, overflow: 'hidden' }}>
-                <p style={{ margin: 0, padding: '10px 14px 6px', fontSize: 11, fontWeight: 700,
-                  color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                  Pilih jenis event
-                </p>
-                {[
-                  { type: 'kebaktian' as const, label: '⛪  Kebaktian', sub: 'Jadwal ibadah dengan petugas' },
-                  { type: 'registration' as const, label: '📋  Registrasi', sub: 'Form pendaftaran untuk acara' },
-                ].map(opt => (
-                  <button key={opt.type} onClick={() => { setCreateMenuOpen(false); setShowCreate(opt.type); }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
-                      background: 'none', border: 'none', borderTop: `1px solid ${C.border}`,
-                      cursor: 'pointer', fontFamily: 'inherit' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{opt.label}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{opt.sub}</p>
-                  </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 4, background: C.card, borderRadius: 10,
+                border: `1.5px solid ${C.border}`, padding: 5, width: 'fit-content' }}>
+                {(['upcoming', 'finished'] as const).map(t => (
+                <button key={t} onClick={() => setTab(t)} style={{
+                    padding: '7px 20px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                    background: tab === t ? C.primary : 'transparent',
+                    color: tab === t ? '#fff' : C.sub,
+                    fontSize: 13, fontWeight: tab === t ? 700 : 600, fontFamily: 'inherit',
+                    transition: 'all 0.15s',
+                }}>
+                    {t === 'upcoming' ? 'Akan Datang' : 'Selesai'}
+                    <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700,
+                    background: tab === t ? 'rgba(255,255,255,0.2)' : C.bg,
+                    color: tab === t ? '#fff' : C.muted,
+                    borderRadius: 10, padding: '1px 7px' }}>
+                    {t === 'upcoming' ? upcomingEvents.length : finishedEvents.length}
+                    </span>
+                </button>
                 ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+            </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, background: C.card, borderRadius: 10,
-        border: `1.5px solid ${C.border}`, padding: 5, marginBottom: 20, width: 'fit-content' }}>
-        {(['upcoming', 'finished'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: '7px 20px', borderRadius: 7, border: 'none', cursor: 'pointer',
-            background: tab === t ? C.primary : 'transparent',
-            color: tab === t ? '#fff' : C.sub,
-            fontSize: 13, fontWeight: tab === t ? 700 : 600, fontFamily: 'inherit',
-            transition: 'all 0.15s',
-          }}>
-            {t === 'upcoming' ? 'Akan Datang' : 'Selesai'}
-            <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700,
-              background: tab === t ? 'rgba(255,255,255,0.2)' : C.bg,
-              color: tab === t ? '#fff' : C.muted,
-              borderRadius: 10, padding: '1px 7px' }}>
-              {t === 'upcoming' ? upcomingEvents.length : finishedEvents.length}
-            </span>
-          </button>
-        ))}
-      </div>
+            {/* Create dropdown */}
+            <div style={{ position: 'relative' }}>
+                <button
+                    onClick={() => setCreateMenuOpen(v => !v)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px',
+                    background: C.primary, color: '#fff', border: 'none', borderRadius: 9,
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                    <PlusIcon /> Buat Event
+                </button>
+            {createMenuOpen && (
+                <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}
+                    onClick={() => setCreateMenuOpen(false)} />
+                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                    background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 10,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 51, minWidth: 210, overflow: 'hidden' }}>
+                    <p style={{ margin: 0, padding: '10px 14px 6px', fontSize: 11, fontWeight: 700,
+                    color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    Pilih jenis event
+                    </p>
+                    {[
+                    { type: 'kebaktian' as const, label: 'Kebaktian', sub: 'Jadwal ibadah dengan petugas' },
+                    { type: 'registration' as const, label: 'Registrasi', sub: 'Form pendaftaran untuk acara' },
+                    ].map(opt => (
+                    <button key={opt.type} onClick={() => { setCreateMenuOpen(false); setShowCreate(opt.type); }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
+                        background: 'none', border: 'none', borderTop: `1px solid ${C.border}`,
+                        cursor: 'pointer', fontFamily: 'inherit' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{opt.label}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{opt.sub}</p>
+                    </button>
+                    ))}
+                </div>
+                </>
+            )}
+            </div>
+        </div>
 
-      {/* Events list */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '48px 0', color: C.muted }}>Memuat events...</div>
-      ) : displayed.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '64px 0', color: C.muted }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
-            {tab === 'upcoming' ? 'Tidak ada event mendatang.' : 'Belum ada riwayat event selesai.'}
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {displayed.map(ev => (
-            <EventCard key={ev.id} event={ev} isFinished={tab === 'finished'}
-              fmtDate={fmtDate}
-              onEdit={() => setEditEvent(ev)}
-              onDelete={() => handleDelete(ev)}
-              onRegistrants={() => setRegistrantsEvent(ev)}
-              onVolunteers={() => setVolunteersEvent(ev)}
-              onFinishData={() => setFinishDataEvent(ev)}
-            />
-          ))}
-        </div>
+        {/* Events list */}
+        {loading ? (
+            <div style={{ textAlign: 'center', padding: '48px 0', color: C.muted }}>Memuat events...</div>
+        ) : displayed.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '64px 0', color: C.muted }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+                {tab === 'upcoming' ? 'Tidak ada event mendatang.' : 'Belum ada riwayat event selesai.'}
+            </p>
+            </div>
+        ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {displayed.map(ev => (
+                <EventCard key={ev.id} event={ev} isFinished={tab === 'finished'}
+                fmtDate={fmtDate}
+                onEdit={() => setEditEvent(ev)}
+                onDelete={() => handleDelete(ev)}
+                onRegistrants={() => setRegistrantsEvent(ev)}
+                onVolunteers={() => setVolunteersEvent(ev)}
+                onFinishData={() => setFinishDataEvent(ev)}
+                />
+            ))}
+            </div>
       )}
 
       {/* ── Modals ── */}
@@ -447,7 +438,7 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
         {/* Title block */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-            <Badge label={isReg ? 'REG' : 'IBADAH'}
+            <Badge label={isReg ? 'REGISTRASI' : 'IBADAH'}
               color={isFinished ? C.muted : typeColor}
               bg={isFinished ? '#f1f5f9' : typeBg}
               border={isFinished ? C.border : typeBorder} />
