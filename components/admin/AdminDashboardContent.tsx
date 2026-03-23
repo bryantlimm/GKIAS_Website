@@ -250,10 +250,10 @@ export default function AdminDashboardContent() {
             {/* ── WARTA ── */}
             {activeMenu === 'warta' && (
               <>
-                <div style={{ marginBottom: 20 }}>
+                {/* <div style={{ marginBottom: 20 }}>
                   <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#1e293b' }}>Warta Jemaat & Berita</h1>
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>Kelola warta jemaat dan berita gereja</p>
-                </div>
+                </div> */}
                 <div className="admin-card">
                   <NewsManager />
                 </div>
@@ -263,10 +263,10 @@ export default function AdminDashboardContent() {
             {/* ── VOLUNTEER ── */}
             {activeMenu === 'volunteer' && (
               <>
-                <div style={{ marginBottom: 20 }}>
+                {/* <div style={{ marginBottom: 20 }}>
                   <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#1e293b' }}>Permintaan Pelayanan</h1>
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>Kelola permintaan pelayanan jemaat</p>
-                </div>
+                </div> */}
                 <div className="admin-card">
                   <VolunteerRequestsManager />
                 </div>
@@ -276,10 +276,10 @@ export default function AdminDashboardContent() {
             {/* ── HALAMAN UTAMA ── */}
             {activeMenu === 'halaman-utama' && (
               <div>
-                <div style={{ marginBottom: 16 }}>
+                {/* <div style={{ marginBottom: 16 }}>
                   <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: '#1e293b' }}>Halaman Utama</h1>
                   <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>Kelola konten halaman utama website</p>
-                </div>
+                </div> */}
 
                 {/* Horizontal scrollable tab bar */}
                 <div style={{

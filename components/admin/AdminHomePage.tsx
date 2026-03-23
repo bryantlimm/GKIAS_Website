@@ -130,15 +130,15 @@ function DateRangePicker({
   onToChange: (v: string) => void;
 }) {
   const inputStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 600, color: C.primary,
+    fontSize: 11, fontWeight: 600, color: C.primary,
     background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
-    borderRadius: 8, padding: '3px 8px', cursor: 'pointer', outline: 'none',
-    fontFamily: 'inherit',
+    borderRadius: 6, padding: '2px 6px', cursor: 'pointer', outline: 'none',
+    fontFamily: 'inherit', minWidth: 0,
   };
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 1, minWidth: 0 }}>
       <input type="date" value={from} onChange={e => onFromChange(e.target.value)} style={inputStyle} />
-      <span style={{ fontSize: 11, color: C.muted }}>–</span>
+      <span style={{ fontSize: 10, color: C.muted, flexShrink: 0 }}>–</span>
       <input type="date" value={to} onChange={e => onToChange(e.target.value)} style={inputStyle} />
     </div>
   );
@@ -307,7 +307,7 @@ export default function AdminHomePage() {
             id: d.id,
             title: data.title ?? 'Event',
             date: (data.date as Timestamp).toDate(),
-            type: 'registration',
+            type: 'registration' as const,
             capacity: data.capacity ?? 0,
             currentRegistrants: data.currentRegistrants ?? 0,
             description: data.description,
@@ -505,10 +505,10 @@ export default function AdminHomePage() {
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
 
       {/* ── Page title ── */}
-      {/* <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 28 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}>Dashboard</h1>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: C.muted }}>Ringkasan data ibadah dan jemaat</p>
-      </div> */}
+      </div>
 
       {/* ══ SECTION 1: STAT CARDS ══════════════════════════════════════════ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
@@ -517,7 +517,7 @@ export default function AdminHomePage() {
         <StatCard
           label="Persembahan Terakhir"
           value={fmtCurrency(lastOffering)}
-          valueColor={C.success}
+          valueColor={C.primary}
           filter={
             <SelectPill value={offeringService} options={serviceOptions} onChange={setOfferingService} />
           }
@@ -541,8 +541,8 @@ export default function AdminHomePage() {
         {/* Card 3 — Last attendance */}
         <StatCard
           label="Kehadiran Terakhir"
-          value={fmtNumber(lastAttendance) + (lastAttendance !== undefined ? ' jiwa' : '')}
-          valueColor={C.warn}
+          value={fmtNumber(lastAttendance) + (lastAttendance !== undefined ? ' orang' : '')}
+          valueColor={C.primary}
           filter={
             <SelectPill value={attendanceService} options={serviceOptions} onChange={setAttendanceService} />
           }
@@ -552,7 +552,7 @@ export default function AdminHomePage() {
         {/* Card 4 — Total attendance this period */}
         <StatCard
           label="Total Kehadiran"
-          value={fmtNumber(totalAttendance) + (totalAttendance > 0 ? ' jiwa' : '')}
+          value={fmtNumber(totalAttendance) + (totalAttendance > 0 ? ' orang' : '')}
           valueColor={C.primary}
           filter={
             <DateRangePicker
@@ -881,7 +881,7 @@ export default function AdminHomePage() {
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 
 function StatCard({
-  label, value, valueColor, filter, sub,
+    label, value, valueColor, filter, sub,
 }: {
   label: string;
   value: string;
