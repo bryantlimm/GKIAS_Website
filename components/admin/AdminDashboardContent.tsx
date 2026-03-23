@@ -40,7 +40,7 @@ export default function AdminDashboardContent() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const [activeMenu, setActiveMenu] = useState<MainMenu>('halaman-utama');
+  const [activeMenu, setActiveMenu] = useState<MainMenu>('home');
   const [activeTab, setActiveTab] = useState<HalamanTab>('settings');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

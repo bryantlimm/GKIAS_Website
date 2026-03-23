@@ -4,8 +4,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import {
-  collection, query, where, orderBy, getDocs, deleteDoc, doc,
-  Timestamp,
+  collection, query, where, getDocs, onSnapshot,
+  deleteDoc, doc, Timestamp,
 } from 'firebase/firestore';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,6 +27,11 @@ interface RegistrationEvent {
   title: string;
   date: Date;
   type: 'registration';
+  capacity: number;
+  currentRegistrants: number;
+  description?: string;
+  registrationDeadline?: Date;
+  is_finished?: boolean;
 }
 
 interface UserAccount {
@@ -55,6 +60,7 @@ const C = {
   successBorder:'#bbf7d0',
   warn:     '#d97706',
   warnBg:   '#fffbeb',
+  warnBorder: '#fde68a',
   error:    '#dc2626',
   errorBg:  '#fff5f5',
   errorBorder:'#fecaca',
@@ -266,15 +272,14 @@ export default function AdminHomePage() {
 
   // ── Chart filter ──
   const [chartService, setChartService] = useState('all');
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
   // ── Load data ──
   useEffect(() => {
     const load = async () => {
       try {
-        // service_events (all, not just finished — chart needs all)
-        const seSnap = await getDocs(
-          query(collection(db, 'service_events'), orderBy('date', 'desc'))
-        );
+        // service_events — fetch all, sort client-side (no index needed)
+        const seSnap = await getDocs(collection(db, 'service_events'));
         const se: ServiceEvent[] = seSnap.docs.map(d => {
           const data = d.data();
           return {
@@ -288,12 +293,13 @@ export default function AdminHomePage() {
             is_finished: data.is_finished ?? false,
             description: data.description,
           };
-        });
+        }).sort((a, b) => b.date.getTime() - a.date.getTime());
         setServiceEvents(se);
 
-        // registration events (upcoming)
+        // registration events — fetch with only a single where(), no orderBy
+        // (combining where() on one field + orderBy() on another = composite index required)
         const evSnap = await getDocs(
-          query(collection(db, 'events'), where('type', '==', 'registration'), orderBy('date', 'asc'))
+          query(collection(db, 'events'), where('type', '==', 'registration'))
         );
         const re: RegistrationEvent[] = evSnap.docs.map(d => {
           const data = d.data();
@@ -302,14 +308,20 @@ export default function AdminHomePage() {
             title: data.title ?? 'Event',
             date: (data.date as Timestamp).toDate(),
             type: 'registration',
+            capacity: data.capacity ?? 0,
+            currentRegistrants: data.currentRegistrants ?? 0,
+            description: data.description,
+            registrationDeadline: data.registrationDeadline
+              ? (data.registrationDeadline as Timestamp).toDate()
+              : undefined,
+            is_finished: data.is_finished ?? false,
           };
-        });
+        }).sort((a, b) => a.date.getTime() - b.date.getTime());
         setRegEvents(re);
 
-        // users
-        const usSnap = await getDocs(
-          query(collection(db, 'users'), orderBy('name'))
-        );
+        // users — no orderBy (fails if any doc is missing the 'name' field)
+        // use onSnapshot so the list stays live (new registrations appear instantly)
+        const usSnap = await getDocs(collection(db, 'users'));
         const us: UserAccount[] = usSnap.docs.map(d => {
           const data = d.data();
           return {
@@ -320,7 +332,7 @@ export default function AdminHomePage() {
             ministries: data.ministries ?? [],
             createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : undefined,
           };
-        });
+        }).sort((a, b) => a.name.localeCompare(b.name, 'id'));
         setUsers(us);
       } catch (e) {
         console.error(e);
@@ -423,14 +435,32 @@ export default function AdminHomePage() {
   const upcomingEvents = useMemo(() => {
     const now = new Date();
     const upcoming = [
+      // Kebaktian: show if not finished (even if date passed, matching mobile logic)
       ...serviceEvents
-        .filter(e => !e.is_finished && e.date >= now)
-        .map(e => ({ id: e.id, title: e.ministry, date: e.date, type: 'kebaktian' })),
+        .filter(e => !e.is_finished)
+        .map(e => ({
+          id: e.id,
+          title: e.ministry,
+          date: e.date,
+          type: 'kebaktian' as const,
+          subtitle: e.description ?? '',
+          badge: null as string | null,
+          isFull: false,
+        })),
+      // Registration: show if date hasn't passed
       ...regEvents
-        .filter(e => e.date >= now)
-        .map(e => ({ id: e.id, title: e.title, date: e.date, type: 'registrasi' })),
+        .filter(e => !e.is_finished && e.date > now)
+        .map(e => ({
+          id: e.id,
+          title: e.title,
+          date: e.date,
+          type: 'registrasi' as const,
+          subtitle: e.description ?? '',
+          badge: `${e.currentRegistrants}/${e.capacity}`,
+          isFull: e.currentRegistrants >= e.capacity,
+        })),
     ].sort((a, b) => a.date.getTime() - b.date.getTime());
-    return upcoming.slice(0, 8);
+    return upcoming;
   }, [serviceEvents, regEvents]);
 
   // ── User management ──
@@ -475,17 +505,16 @@ export default function AdminHomePage() {
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
 
       {/* ── Page title ── */}
-      <div style={{ marginBottom: 28 }}>
+      {/* <div style={{ marginBottom: 28 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.text }}>Dashboard</h1>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: C.muted }}>Ringkasan data ibadah dan jemaat</p>
-      </div>
+      </div> */}
 
       {/* ══ SECTION 1: STAT CARDS ══════════════════════════════════════════ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
 
         {/* Card 1 — Last offering */}
         <StatCard
-          icon=""
           label="Persembahan Terakhir"
           value={fmtCurrency(lastOffering)}
           valueColor={C.success}
@@ -497,7 +526,6 @@ export default function AdminHomePage() {
 
         {/* Card 2 — Total offering this period */}
         <StatCard
-          icon=""
           label="Total Persembahan"
           value={fmtCurrency(totalOffering)}
           valueColor={C.primary}
@@ -512,7 +540,6 @@ export default function AdminHomePage() {
 
         {/* Card 3 — Last attendance */}
         <StatCard
-          icon=""
           label="Kehadiran Terakhir"
           value={fmtNumber(lastAttendance) + (lastAttendance !== undefined ? ' jiwa' : '')}
           valueColor={C.warn}
@@ -524,7 +551,6 @@ export default function AdminHomePage() {
 
         {/* Card 4 — Total attendance this period */}
         <StatCard
-          icon=""
           label="Total Kehadiran"
           value={fmtNumber(totalAttendance) + (totalAttendance > 0 ? ' jiwa' : '')}
           valueColor={C.primary}
@@ -556,44 +582,151 @@ export default function AdminHomePage() {
         </Card>
 
         {/* Upcoming events */}
-        <Card style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column' }}>
-          <p style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: C.text }}>Event Mendatang</p>
-          {upcomingEvents.length === 0 ? (
-            <p style={{ fontSize: 13, color: C.muted, textAlign: 'center', margin: 'auto 0' }}>Tidak ada event mendatang.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto' }}>
-              {upcomingEvents.map(ev => (
-                <div key={ev.id} style={{
-                  padding: '10px 12px',
-                  borderRadius: 9, border: `1.5px solid ${C.border}`,
-                  background: '#fafbfc',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{
-                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0, marginTop: 4,
-                      background: ev.type === 'kebaktian' ? C.primary : C.success,
-                    }} />
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ev.title}
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>{fmtDate(ev.date)}</p>
-                    </div>
-                    <span style={{
-                      flexShrink: 0, marginLeft: 'auto',
-                      fontSize: 9, fontWeight: 700, color: ev.type === 'kebaktian' ? C.primary : C.success,
-                      background: ev.type === 'kebaktian' ? C.primaryBg : C.successBg,
-                      border: `1px solid ${ev.type === 'kebaktian' ? C.primaryBorder : C.successBorder}`,
-                      borderRadius: 20, padding: '2px 6px', textTransform: 'uppercase',
-                    }}>
-                      {ev.type}
-                    </span>
-                  </div>
-                </div>
-              ))}
+        <Card style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Panel header with create button */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '16px 16px 12px', borderBottom: `1px solid ${C.border}`,
+          }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>Event Mendatang</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>{upcomingEvents.length} event</p>
             </div>
-          )}
+            {/* Create dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setCreateMenuOpen(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '6px 12px',
+                  background: C.primary, color: '#fff',
+                  border: 'none', borderRadius: 7,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <PlusIconSmall /> Buat
+              </button>
+              {createMenuOpen && (
+                <>
+                  {/* Backdrop */}
+                  <div
+                    style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+                    onClick={() => setCreateMenuOpen(false)}
+                  />
+                  {/* Dropdown */}
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                    background: C.card, border: `1.5px solid ${C.border}`,
+                    borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                    zIndex: 20, minWidth: 200, overflow: 'hidden',
+                  }}>
+                    <p style={{ margin: 0, padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      Pilih jenis event
+                    </p>
+                    <CreateMenuOption
+                      label="Kebaktian"
+                      sub="Jadwal ibadah dengan petugas"
+                      href="/admin/create-service"
+                      onClick={() => setCreateMenuOpen(false)}
+                    />
+                    <CreateMenuOption
+                      label="Registrasi"
+                      sub="Form pendaftaran untuk acara"
+                      href="/admin/create-registration"
+                      onClick={() => setCreateMenuOpen(false)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Event list */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 12px' }}>
+            {upcomingEvents.length === 0 ? (
+              <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontSize: 13 }}>
+                Tidak ada event mendatang.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {upcomingEvents.map(ev => {
+                  const isReg = ev.type === 'registrasi';
+                  const typeColor  = isReg ? C.success  : C.primary;
+                  const typeBg     = isReg ? C.successBg : C.primaryBg;
+                  const typeBorder = isReg ? C.successBorder : C.primaryBorder;
+                  const isPast = ev.date < new Date();
+                  return (
+                    <div key={ev.id} style={{
+                      padding: '10px 12px',
+                      borderRadius: 9,
+                      border: `1.5px solid ${isPast ? C.warnBorder : typeBorder}`,
+                      background: isPast ? C.warnBg : '#fafbfc',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        {/* Date badge */}
+                        <div style={{
+                          flexShrink: 0, width: 36, textAlign: 'center',
+                          background: isPast ? '#fff' : typeBg,
+                          borderRadius: 7, padding: '3px 4px',
+                          border: `1px solid ${isPast ? C.warnBorder : typeBorder}`,
+                        }}>
+                          <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: isPast ? C.warn : typeColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                            {ev.date.toLocaleDateString('id-ID', { month: 'short' })}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: isPast ? C.warn : typeColor, lineHeight: 1 }}>
+                            {ev.date.getDate()}
+                          </p>
+                        </div>
+
+                        {/* Title + sub */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                            <span style={{
+                              fontSize: 9, fontWeight: 800, letterSpacing: '0.4px',
+                              color: typeColor, background: typeBg,
+                              border: `1px solid ${typeBorder}`,
+                              borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', flexShrink: 0,
+                            }}>
+                              {isReg ? 'REG' : 'IBADAH'}
+                            </span>
+                            {isPast && (
+                              <span style={{ fontSize: 9, fontWeight: 700, color: C.warn, background: C.warnBg, border: `1px solid ${C.warnBorder}`, borderRadius: 4, padding: '1px 5px' }}>
+                                BELUM SELESAI
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {ev.title}
+                          </p>
+                          {ev.subtitle && (
+                            <p style={{ margin: '1px 0 0', fontSize: 10, color: C.muted,
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {ev.subtitle}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Badge: registrant count or nothing */}
+                        {ev.badge && (
+                          <span style={{
+                            flexShrink: 0, fontSize: 10, fontWeight: 700,
+                            color: ev.isFull ? C.error : C.success,
+                            background: ev.isFull ? C.errorBg : C.successBg,
+                            border: `1px solid ${ev.isFull ? C.errorBorder : C.successBorder}`,
+                            borderRadius: 5, padding: '2px 6px',
+                          }}>
+                            {ev.badge}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </Card>
       </div>
 
@@ -748,9 +881,8 @@ export default function AdminHomePage() {
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 
 function StatCard({
-  icon, label, value, valueColor, filter, sub,
+  label, value, valueColor, filter, sub,
 }: {
-  icon: string;
   label: string;
   value: string;
   valueColor: string;
@@ -763,10 +895,7 @@ function StatCard({
       boxShadow: '0 2px 12px rgba(0,0,0,0.04)', padding: '18px 20px',
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>{icon}</span>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.sub }}>{label}</p>
-        </div>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.sub }}>{label}</p>
         {filter}
       </div>
       <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: valueColor, lineHeight: 1.1 }}>
@@ -792,6 +921,40 @@ function XSmallIcon() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>
+  );
+}
+
+function PlusIconSmall() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+}
+
+function CreateMenuOption({
+  label, sub, href, onClick,
+}: {
+  label: string; sub: string; href: string; onClick: () => void;
+}) {
+  return (
+    <a
+      href={href}
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 14px', textDecoration: 'none',
+        borderTop: `1px solid ${C.border}`, cursor: 'pointer',
+        transition: 'background 0.12s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+    >
+      <div>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{label}</p>
+        <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{sub}</p>
+      </div>
+    </a>
   );
 }
 
