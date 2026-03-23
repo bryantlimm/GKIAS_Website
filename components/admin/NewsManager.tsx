@@ -55,11 +55,9 @@ const PdfIcon = () => (
   </svg>
 );
 
-const ImageIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2"/>
-    <circle cx="8.5" cy="8.5" r="1.5"/>
-    <polyline points="21 15 16 10 5 21"/>
+const SearchIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
   </svg>
 );
 
@@ -75,6 +73,22 @@ const CheckIcon = () => (
   </svg>
 );
 
+// ─── Shared styles ────────────────────────────────────────────────────────────
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  border: '1.5px solid #e2e8f0',
+  borderRadius: 8,
+  fontSize: 14,
+  color: '#1e293b',
+  background: '#fff',
+  outline: 'none',
+  fontFamily: 'inherit',
+  boxSizing: 'border-box',
+  transition: 'border-color 0.2s',
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -87,27 +101,24 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function StatusToast({ type, message }: { type: 'success' | 'error' | ''; message: string }) {
   if (!message) return null;
-  const isSuccess = type === 'success';
+  const ok = type === 'success';
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
-      padding: '12px 16px',
-      borderRadius: 10,
-      background: isSuccess ? '#f0fdf4' : '#fff5f5',
-      border: `1.5px solid ${isSuccess ? '#bbf7d0' : '#fecaca'}`,
-      color: isSuccess ? '#16a34a' : '#dc2626',
-      fontSize: 13, fontWeight: 600,
-      marginBottom: 20,
+      padding: '12px 16px', borderRadius: 10,
+      background: ok ? '#f0fdf4' : '#fff5f5',
+      border: `1.5px solid ${ok ? '#bbf7d0' : '#fecaca'}`,
+      color: ok ? '#16a34a' : '#dc2626',
+      fontSize: 13, fontWeight: 600, marginBottom: 20,
     }}>
-      <span>{isSuccess ? <CheckIcon /> : <XIcon />}</span>
+      {ok ? <CheckIcon /> : <XIcon />}
       {message}
     </div>
   );
 }
 
 function FileDropZone({
-  label, accept, hint, file, existingUrl, existingLabel,
-  onChange,
+  label, accept, hint, file, existingUrl, existingLabel, onChange,
 }: {
   label: string; accept: string; hint: string;
   file: File | null; existingUrl: string; existingLabel: string;
@@ -127,9 +138,7 @@ function FileDropZone({
         onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) onChange(f); }}
         style={{
           border: `2px dashed ${dragging ? '#3b5bdb' : hasFile ? '#bbf7d0' : '#e2e8f0'}`,
-          borderRadius: 10,
-          padding: '18px 16px',
-          textAlign: 'center',
+          borderRadius: 10, padding: '18px 16px', textAlign: 'center',
           cursor: 'pointer',
           background: dragging ? '#eff3ff' : hasFile ? '#f0fdf4' : '#f8fafc',
           transition: 'all 0.2s',
@@ -139,7 +148,7 @@ function FileDropZone({
           {hasFile ? <CheckIcon /> : <UploadIcon />}
         </div>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: hasFile ? '#16a34a' : '#64748b' }}>
-          {file ? file.name : existingUrl ? existingLabel : `Klik atau drag & drop`}
+          {file ? file.name : existingUrl ? existingLabel : 'Klik atau drag & drop'}
         </p>
         <p style={{ margin: '3px 0 0', fontSize: 11, color: '#94a3b8' }}>{hint}</p>
       </div>
@@ -159,6 +168,7 @@ export default function NewsManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -253,35 +263,54 @@ export default function NewsManager() {
     }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 14px',
-    border: '1.5px solid #e2e8f0', borderRadius: 8,
-    fontSize: 14, color: '#1e293b',
-    background: '#fff', outline: 'none',
-    fontFamily: 'inherit', boxSizing: 'border-box',
-    transition: 'border-color 0.2s',
-  };
-
   const formatDate = (ts: Timestamp) =>
     ts?.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const filteredNewsList = newsList.filter(item =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div style={{ fontFamily: "'Nunito', sans-serif" }}>
       <StatusToast type={statusMessage.type} message={statusMessage.message} />
 
-      {/* ── Header row ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>
-            {loading ? 'Memuat...' : `${newsList.length} artikel`}
-          </p>
+      {/* ── Toolbar: search + add button ── */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+        {/* Search */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+            <SearchIcon />
+          </div>
+          <input
+            type="text"
+            placeholder="Cari berita berdasarkan judul..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ ...inputStyle, paddingLeft: 38, paddingRight: searchQuery ? 36 : 14 }}
+            onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+            onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              style={{
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#94a3b8', display: 'flex', alignItems: 'center', padding: 2,
+              }}
+            >
+              <XIcon />
+            </button>
+          )}
         </div>
+
+        {/* Add button */}
         {!showForm && (
           <button
             onClick={() => { resetForm(); setShowForm(true); }}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
-              padding: '9px 16px',
+              padding: '10px 16px', flexShrink: 0,
               background: '#3b5bdb', color: '#fff',
               border: 'none', borderRadius: 8,
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -290,42 +319,40 @@ export default function NewsManager() {
             onMouseEnter={e => (e.currentTarget.style.background = '#2f4ac7')}
             onMouseLeave={e => (e.currentTarget.style.background = '#3b5bdb')}
           >
-            <PlusIcon /> Tambah Berita
+            <PlusIcon /> Tambah
           </button>
         )}
       </div>
 
+      {/* Article count */}
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#94a3b8' }}>
+        {loading ? 'Memuat...' : searchQuery
+          ? `${filteredNewsList.length} dari ${newsList.length} berita`
+          : `${newsList.length} berita`
+        }
+      </p>
+
       {/* ── Form ── */}
       {showForm && (
-        <div style={{
-          border: '1.5px solid #e2e8f0', borderRadius: 12,
-          marginBottom: 28, overflow: 'hidden',
-        }}>
-          {/* Form header */}
+        <div style={{ border: '1.5px solid #e2e8f0', borderRadius: 12, marginBottom: 24, overflow: 'hidden' }}>
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 20px', background: '#f8fafc',
-            borderBottom: '1.5px solid #e2e8f0',
+            padding: '14px 20px', background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0',
           }}>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
-              {isEditing ? '✏️  Edit Berita' : '✨  Tambah Berita Baru'}
+              {isEditing ? 'Edit Berita' : 'Tambah Berita Baru'}
             </p>
-            <button
-              onClick={resetForm}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: 4 }}
-            >
+            <button onClick={resetForm} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: 4 }}>
               <XIcon />
             </button>
           </div>
 
-          {/* Form body */}
           <form onSubmit={handleSubmit} style={{ padding: '20px 20px 24px' }}>
             <div style={{ marginBottom: 16 }}>
               <FieldLabel>Judul Berita</FieldLabel>
               <input
                 type="text" value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="Masukkan judul berita..."
-                required style={inputStyle}
+                placeholder="Masukkan judul berita..." required style={inputStyle}
                 onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
                 onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
               />
@@ -345,21 +372,13 @@ export default function NewsManager() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
               <FileDropZone
-                label="Gambar (Opsional)"
-                accept="image/*"
-                hint="PNG, JPG hingga 5MB"
-                file={imageFile}
-                existingUrl={existingImageUrl}
-                existingLabel="Gambar terpasang"
+                label="Gambar (Opsional)" accept="image/*" hint="PNG, JPG hingga 5MB"
+                file={imageFile} existingUrl={existingImageUrl} existingLabel="Gambar terpasang"
                 onChange={setImageFile}
               />
               <FileDropZone
-                label="PDF (Opsional)"
-                accept="application/pdf"
-                hint="File PDF"
-                file={pdfFile}
-                existingUrl={existingPdfUrl}
-                existingLabel="PDF terpasang"
+                label="PDF (Opsional)" accept="application/pdf" hint="File PDF"
+                file={pdfFile} existingUrl={existingPdfUrl} existingLabel="PDF terpasang"
                 onChange={setPdfFile}
               />
             </div>
@@ -383,11 +402,9 @@ export default function NewsManager() {
               <button
                 type="button" onClick={resetForm}
                 style={{
-                  padding: '10px 16px',
-                  background: 'transparent', color: '#64748b',
+                  padding: '10px 16px', background: 'transparent', color: '#64748b',
                   border: '1.5px solid #e2e8f0', borderRadius: 8,
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -405,11 +422,16 @@ export default function NewsManager() {
       ) : newsList.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Belum ada berita</p>
-          <p style={{ margin: '4px 0 0', fontSize: 13 }}>Klik Tambah Berita untuk membuat artikel pertama</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13 }}>Klik Tambah untuk membuat warta pertama</p>
+        </div>
+      ) : filteredNewsList.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Tidak ada hasil</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13 }}>Coba ubah kata kunci pencarian</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {newsList.map(item => (
+          {filteredNewsList.map(item => (
             <div
               key={item.id}
               style={{
@@ -421,12 +443,10 @@ export default function NewsManager() {
               onMouseEnter={e => (e.currentTarget.style.borderColor = '#c7d2fe')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = '#e8ecf0')}
             >
-              {/* Thumbnail */}
               <div style={{ width: 56, height: 56, borderRadius: 8, overflow: 'hidden', background: '#f1f5f9', flexShrink: 0, position: 'relative' }}>
                 <Image src={item.imageUrl} alt={item.title} fill style={{ objectFit: 'cover' }} />
               </div>
 
-              {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {item.title}
@@ -441,17 +461,13 @@ export default function NewsManager() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
                   onClick={() => handleEditClick(item)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '7px 12px',
-                    background: '#f1f5f9', color: '#3b5bdb',
-                    border: '1.5px solid #e2e8f0', borderRadius: 7,
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
+                    background: '#f1f5f9', color: '#3b5bdb', border: '1.5px solid #e2e8f0', borderRadius: 7,
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#eff3ff'; e.currentTarget.style.borderColor = '#c7d2fe'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
@@ -461,12 +477,9 @@ export default function NewsManager() {
                 <button
                   onClick={() => handleDelete(item.id)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '7px 12px',
-                    background: '#fff5f5', color: '#dc2626',
-                    border: '1.5px solid #fecaca', borderRadius: 7,
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px',
+                    background: '#fff5f5', color: '#dc2626', border: '1.5px solid #fecaca', borderRadius: 7,
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#dc2626'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#fecaca'; }}
