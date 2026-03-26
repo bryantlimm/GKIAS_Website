@@ -14,7 +14,7 @@ import {
 interface EventDoc {
   id: string;
   type: 'kebaktian' | 'registration';
-  title: string;           // ministry name for kebaktian, title for registration
+  title: string;
   date: Date;
   is_finished: boolean;
   description?: string;
@@ -86,7 +86,7 @@ function ActionChip({ icon, label, color = C.primary, bg = C.primaryBg,
       fontSize: 12, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1, fontFamily: 'inherit', transition: 'all 0.15s',
     }}
-      onMouseEnter={e => { if (!disabled) { e.currentTarget.style.opacity = '0.8'; }}}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.opacity = '0.8'; }}
       onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
     >
       {icon}{label}
@@ -115,7 +115,8 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 }
 
 function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} style={{ ...inputStyle, resize: 'vertical', ...(props.style as React.CSSProperties) }}
+  return <textarea {...props}
+    style={{ ...inputStyle, resize: 'vertical', ...(props.style as React.CSSProperties) }}
     onFocus={e => (e.target.style.borderColor = C.primary)}
     onBlur={e => (e.target.style.borderColor = C.border)} />;
 }
@@ -160,6 +161,269 @@ const TrashIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="no
 const PeopleIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
 const PlusIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const ChartIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
+const DocIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>;
+
+// ─── Registrant detail popup ──────────────────────────────────────────────────
+
+function RegistrantDetailModal({ registrant, onClose, fmtDate }: {
+  registrant: Registrant; onClose: () => void; fmtDate: (d: Date) => string;
+}) {
+  return (
+    <Modal title="Detail Registran" onClose={onClose} width={440}>
+      {/* Avatar + name */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+          background: C.primaryBg, color: C.primary,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 18, fontWeight: 800 }}>
+          {registrant.name[0]?.toUpperCase() ?? 'U'}
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.text }}>{registrant.name}</p>
+          {registrant.registeredAt && (
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: C.muted }}>
+              Terdaftar: {fmtDate(registrant.registeredAt)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* Contact */}
+        <div style={{ padding: '12px 14px', borderRadius: 9,
+          background: C.bg, border: `1.5px solid ${C.border}` }}>
+          <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: C.muted,
+            textTransform: 'uppercase', letterSpacing: '0.06em' }}>Kontak</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.text }}>
+            {registrant.contact || '—'}
+          </p>
+        </div>
+
+        {/* Description */}
+        {registrant.description && (
+          <div style={{ padding: '12px 14px', borderRadius: 9,
+            background: C.bg, border: `1.5px solid ${C.border}` }}>
+            <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 700, color: C.muted,
+              textTransform: 'uppercase', letterSpacing: '0.06em' }}>Keterangan</p>
+            <p style={{ margin: 0, fontSize: 13, color: C.text }}>{registrant.description}</p>
+          </div>
+        )}
+
+        {/* Document link */}
+        {registrant.documentUrl && (
+          <a href={registrant.documentUrl} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: 8,
+              padding: '12px 14px', borderRadius: 9,
+              background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
+              textDecoration: 'none', color: C.primary, fontWeight: 700, fontSize: 13 }}>
+            <DocIcon /> Lihat Dokumen
+          </a>
+        )}
+      </div>
+
+      <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+        <button onClick={onClose} style={{ padding: '9px 20px', background: C.card,
+          color: C.sub, border: `1.5px solid ${C.border}`, borderRadius: 8,
+          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Tutup
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Inline registrants panel ─────────────────────────────────────────────────
+// Lives inside the expanded EventCard for registration events.
+// Fetches registrants via onSnapshot only when the card is expanded.
+
+function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
+  eventId: string; capacity: number; fmtDate: (d: Date) => string;
+}) {
+  const [registrants, setRegistrants] = useState<Registrant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [detailRegistrant, setDetailRegistrant] = useState<Registrant | null>(null);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, 'registrations'), where('eventId', '==', eventId)),
+      snap => {
+        const list: Registrant[] = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            name: data.name ?? 'Unknown',
+            contact: data.contact ?? '-',
+            description: data.description,
+            documentUrl: data.documentUrl,
+            registeredAt: data.registeredAt
+              ? (data.registeredAt as Timestamp).toDate() : undefined,
+          };
+        }).sort((a, b) =>
+          (b.registeredAt?.getTime() ?? 0) - (a.registeredAt?.getTime() ?? 0)
+        );
+        setRegistrants(list);
+        setLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [eventId]);
+
+  const handleDelete = async (r: Registrant) => {
+    if (!confirm(`Hapus registrasi "${r.name}"?`)) return;
+    setDeletingId(r.id);
+    try {
+      await deleteDoc(doc(db, 'registrations', r.id));
+      await updateDoc(doc(db, 'events', eventId), { currentRegistrants: increment(-1) });
+    } catch (e) { console.error(e); }
+    finally { setDeletingId(null); }
+  };
+
+  const isFull = registrants.length >= capacity;
+
+  return (
+    <>
+      {/* Section label + count pill */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: C.sub,
+          textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+          Daftar Registran
+        </p>
+        {!loading && (
+          <span style={{ fontSize: 10, fontWeight: 700,
+            color: isFull ? C.error : C.success,
+            background: isFull ? C.errorBg : C.successBg,
+            border: `1px solid ${isFull ? C.errorBorder : C.successBorder}`,
+            borderRadius: 10, padding: '1px 8px' }}>
+            {registrants.length}/{capacity}
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <p style={{ margin: 0, fontSize: 13, color: C.muted }}>Memuat registran...</p>
+      ) : registrants.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 13, color: C.muted, fontStyle: 'italic' }}>
+          Belum ada registran.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Search bar */}
+          <input
+            type="text"
+            placeholder="Cari nama..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: `1.5px solid ${C.border}`,
+              fontSize: 12,
+              fontFamily: 'inherit',
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
+            onBlur={e => (e.currentTarget.style.borderColor = C.border)}
+          />
+
+          {/* Scrollable table */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: '280px', overflowY: 'auto' }}>
+            {/* Column header */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto auto',
+              gap: '0 12px', padding: '5px 10px',
+              background: '#f1f5f9', borderRadius: 7, position: 'sticky', top: 0 }}>
+              {['Nama', 'Kontak', 'Dok.', ''].map((h, i) => (
+                <span key={i} style={{ fontSize: 10, fontWeight: 700, color: C.muted,
+                  textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
+              ))}
+            </div>
+
+            {/* Filtered and display rows */}
+            {registrants
+              .filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+              .slice(0, 3)
+              .map(r => (
+              <div key={r.id} onClick={() => setDetailRegistrant(r)}
+                style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto auto',
+                  gap: '0 12px', padding: '9px 10px', borderRadius: 8,
+                  border: `1.5px solid ${C.border}`, background: C.card,
+                  alignItems: 'center', cursor: 'pointer', transition: 'background 0.12s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#f5f7ff')}
+                onMouseLeave={e => (e.currentTarget.style.background = C.card)}
+              >
+                {/* Name + date */}
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.name}
+                  </p>
+                  {r.registeredAt && (
+                    <p style={{ margin: '1px 0 0', fontSize: 10, color: C.muted }}>
+                      {fmtDate(r.registeredAt)}
+                    </p>
+                  )}
+                </div>
+
+                {/* Contact */}
+                <p style={{ margin: 0, fontSize: 12, color: C.sub,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {r.contact}
+                </p>
+
+                {/* Document */}
+                {r.documentUrl ? (
+                  <a href={r.documentUrl} target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4,
+                      fontSize: 11, fontWeight: 700, color: C.primary,
+                      background: C.primaryBg, border: `1px solid ${C.primaryBorder}`,
+                      borderRadius: 5, padding: '3px 8px', textDecoration: 'none',
+                      whiteSpace: 'nowrap' }}>
+                    <DocIcon /> Lihat
+                  </a>
+                ) : (
+                  <span style={{ fontSize: 11, color: C.muted }}>—</span>
+                )}
+
+                {/* Delete */}
+                <button onClick={e => { e.stopPropagation(); handleDelete(r); }}
+                  disabled={deletingId === r.id}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                    background: C.errorBg, border: `1.5px solid ${C.errorBorder}`,
+                    color: C.error, cursor: deletingId === r.id ? 'not-allowed' : 'pointer',
+                    opacity: deletingId === r.id ? 0.5 : 1, transition: 'all 0.15s' }}
+                  onMouseEnter={e => {
+                    if (deletingId !== r.id) {
+                      (e.currentTarget as HTMLButtonElement).style.background = C.error;
+                      (e.currentTarget as HTMLButtonElement).style.color = '#fff';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = C.errorBg;
+                    (e.currentTarget as HTMLButtonElement).style.color = C.error;
+                  }}
+                >
+                  <TrashIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Registrant detail popup */}
+      {detailRegistrant && (
+        <RegistrantDetailModal
+          registrant={detailRegistrant}
+          fmtDate={fmtDate}
+          onClose={() => setDetailRegistrant(null)}
+        />
+      )}
+    </>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -169,15 +433,12 @@ export default function AdminEventsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'upcoming' | 'finished'>('upcoming');
 
-  // Modal states
   const [showCreate, setShowCreate] = useState<null | 'kebaktian' | 'registration'>(null);
   const [editEvent, setEditEvent] = useState<EventDoc | null>(null);
-  const [registrantsEvent, setRegistrantsEvent] = useState<EventDoc | null>(null);
   const [volunteersEvent, setVolunteersEvent] = useState<EventDoc | null>(null);
   const [finishDataEvent, setFinishDataEvent] = useState<EventDoc | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
 
-  // ── Load events (real-time) ──
   useEffect(() => {
     const unsubs: (() => void)[] = [];
 
@@ -199,10 +460,7 @@ export default function AdminEventsPage() {
             details: data.details,
           } as EventDoc;
         });
-        setEvents(prev => {
-          const without = prev.filter(e => e.type !== 'registration');
-          return [...without, ...re];
-        });
+        setEvents(prev => [...prev.filter(e => e.type !== 'registration'), ...re]);
         setLoading(false);
       }
     );
@@ -224,15 +482,11 @@ export default function AdminEventsPage() {
           offering_notes: data.offering_notes,
         } as EventDoc;
       });
-      setEvents(prev => {
-        const without = prev.filter(e => e.type !== 'kebaktian');
-        return [...without, ...se];
-      });
+      setEvents(prev => [...prev.filter(e => e.type !== 'kebaktian'), ...se]);
       setLoading(false);
     });
     unsubs.push(svcUnsub);
 
-    // schedules (for kebaktian type dropdown)
     getDocs(query(collection(db, 'schedules'), orderBy('order'))).then(snap => {
       setSchedules(snap.docs.map(d => ({ id: d.id, name: d.data().name })));
     });
@@ -240,8 +494,8 @@ export default function AdminEventsPage() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  // ── Split upcoming / finished ──
   const now = new Date();
+
   const upcomingEvents = useMemo(() =>
     events.filter(e => {
       if (e.type === 'kebaktian') return !e.is_finished;
@@ -258,7 +512,6 @@ export default function AdminEventsPage() {
 
   const displayed = tab === 'upcoming' ? upcomingEvents : finishedEvents;
 
-  // ── Delete ──
   const handleDelete = async (e: EventDoc) => {
     if (!confirm(`Hapus "${e.title}"? Semua data terkait akan ikut terhapus.`)) return;
     if (e.type === 'registration') {
@@ -272,116 +525,107 @@ export default function AdminEventsPage() {
     }
   };
 
-  // ── Format ──
   const fmtDate = (d: Date) =>
     d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div style={{ display: 'flex', gap: 4, background: C.card, borderRadius: 10,
-                border: `1.5px solid ${C.border}`, padding: 5, width: 'fit-content' }}>
-                {(['upcoming', 'finished'] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)} style={{
-                    padding: '7px 20px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                    background: tab === t ? C.primary : 'transparent',
-                    color: tab === t ? '#fff' : C.sub,
-                    fontSize: 13, fontWeight: tab === t ? 700 : 600, fontFamily: 'inherit',
-                    transition: 'all 0.15s',
-                }}>
-                    {t === 'upcoming' ? 'Akan Datang' : 'Selesai'}
-                    <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700,
-                    background: tab === t ? 'rgba(255,255,255,0.2)' : C.bg,
-                    color: tab === t ? '#fff' : C.muted,
-                    borderRadius: 10, padding: '1px 7px' }}>
-                    {t === 'upcoming' ? upcomingEvents.length : finishedEvents.length}
-                    </span>
-                </button>
-                ))}
-            </div>
-
-            {/* Create dropdown */}
-            <div style={{ position: 'relative' }}>
-                <button
-                    onClick={() => setCreateMenuOpen(v => !v)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px',
-                    background: C.primary, color: '#fff', border: 'none', borderRadius: 9,
-                    fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                    <PlusIcon /> Buat Event
-                </button>
-            {createMenuOpen && (
-                <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}
-                    onClick={() => setCreateMenuOpen(false)} />
-                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-                    background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 10,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 51, minWidth: 210, overflow: 'hidden' }}>
-                    <p style={{ margin: 0, padding: '10px 14px 6px', fontSize: 11, fontWeight: 700,
-                    color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                    Pilih jenis event
-                    </p>
-                    {[
-                    { type: 'kebaktian' as const, label: 'Kebaktian', sub: 'Jadwal ibadah dengan petugas' },
-                    { type: 'registration' as const, label: 'Registrasi', sub: 'Form pendaftaran untuk acara' },
-                    ].map(opt => (
-                    <button key={opt.type} onClick={() => { setCreateMenuOpen(false); setShowCreate(opt.type); }}
-                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
-                        background: 'none', border: 'none', borderTop: `1px solid ${C.border}`,
-                        cursor: 'pointer', fontFamily: 'inherit' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{opt.label}</p>
-                        <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{opt.sub}</p>
-                    </button>
-                    ))}
-                </div>
-                </>
-            )}
-            </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, background: C.card, borderRadius: 10,
+          border: `1.5px solid ${C.border}`, padding: 5, width: 'fit-content' }}>
+          {(['upcoming', 'finished'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: '7px 20px', borderRadius: 7, border: 'none', cursor: 'pointer',
+              background: tab === t ? C.primary : 'transparent',
+              color: tab === t ? '#fff' : C.sub,
+              fontSize: 13, fontWeight: tab === t ? 700 : 600, fontFamily: 'inherit',
+              transition: 'all 0.15s',
+            }}>
+              {t === 'upcoming' ? 'Akan Datang' : 'Selesai'}
+              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700,
+                background: tab === t ? 'rgba(255,255,255,0.2)' : C.bg,
+                color: tab === t ? '#fff' : C.muted, borderRadius: 10, padding: '1px 7px' }}>
+                {t === 'upcoming' ? upcomingEvents.length : finishedEvents.length}
+              </span>
+            </button>
+          ))}
         </div>
 
-        {/* Events list */}
-        {loading ? (
-            <div style={{ textAlign: 'center', padding: '48px 0', color: C.muted }}>Memuat events...</div>
-        ) : displayed.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '64px 0', color: C.muted }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
-                {tab === 'upcoming' ? 'Tidak ada event mendatang.' : 'Belum ada riwayat event selesai.'}
-            </p>
-            </div>
-        ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {displayed.map(ev => (
-                <EventCard key={ev.id} event={ev} isFinished={tab === 'finished'}
-                fmtDate={fmtDate}
-                onEdit={() => setEditEvent(ev)}
-                onDelete={() => handleDelete(ev)}
-                onRegistrants={() => setRegistrantsEvent(ev)}
-                onVolunteers={() => setVolunteersEvent(ev)}
-                onFinishData={() => setFinishDataEvent(ev)}
-                />
-            ))}
-            </div>
+        {/* Create dropdown */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setCreateMenuOpen(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px',
+              background: C.primary, color: '#fff', border: 'none', borderRadius: 9,
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <PlusIcon /> Buat Event
+          </button>
+          {createMenuOpen && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 50 }}
+                onClick={() => setCreateMenuOpen(false)} />
+              <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+                background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 10,
+                boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 51, minWidth: 210, overflow: 'hidden' }}>
+                <p style={{ margin: 0, padding: '10px 14px 6px', fontSize: 11, fontWeight: 700,
+                  color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                  Pilih jenis event
+                </p>
+                {[
+                  { type: 'kebaktian' as const, label: 'Kebaktian', sub: 'Jadwal ibadah dengan petugas' },
+                  { type: 'registration' as const, label: 'Registrasi', sub: 'Form pendaftaran untuk acara' },
+                ].map(opt => (
+                  <button key={opt.type}
+                    onClick={() => { setCreateMenuOpen(false); setShowCreate(opt.type); }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 14px',
+                      background: 'none', border: 'none', borderTop: `1px solid ${C.border}`,
+                      cursor: 'pointer', fontFamily: 'inherit' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = C.bg)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{opt.label}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{opt.sub}</p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Events list */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '48px 0', color: C.muted }}>Memuat events...</div>
+      ) : displayed.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '64px 0', color: C.muted }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
+            {tab === 'upcoming' ? 'Tidak ada event mendatang.' : 'Belum ada riwayat event selesai.'}
+          </p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {displayed.map(ev => (
+            <EventCard key={ev.id} event={ev} isFinished={tab === 'finished'}
+              fmtDate={fmtDate}
+              onEdit={() => setEditEvent(ev)}
+              onDelete={() => handleDelete(ev)}
+              onVolunteers={() => setVolunteersEvent(ev)}
+              onFinishData={() => setFinishDataEvent(ev)}
+            />
+          ))}
+        </div>
       )}
 
-      {/* ── Modals ── */}
+      {/* Modals */}
       {(showCreate === 'kebaktian' || (editEvent && editEvent.type === 'kebaktian')) && (
-        <KebaktianModal
-          schedules={schedules}
+        <KebaktianModal schedules={schedules}
           existing={editEvent?.type === 'kebaktian' ? editEvent : null}
-          onClose={() => { setShowCreate(null); setEditEvent(null); }}
-        />
+          onClose={() => { setShowCreate(null); setEditEvent(null); }} />
       )}
       {(showCreate === 'registration' || (editEvent && editEvent.type === 'registration')) && (
         <RegistrationModal
           existing={editEvent?.type === 'registration' ? editEvent : null}
-          onClose={() => { setShowCreate(null); setEditEvent(null); }}
-        />
-      )}
-      {registrantsEvent && (
-        <RegistrantsModal event={registrantsEvent} onClose={() => setRegistrantsEvent(null)} fmtDate={fmtDate} />
+          onClose={() => { setShowCreate(null); setEditEvent(null); }} />
       )}
       {volunteersEvent && (
         <VolunteersModal event={volunteersEvent} onClose={() => setVolunteersEvent(null)} />
@@ -396,29 +640,29 @@ export default function AdminEventsPage() {
 // ─── Event card ───────────────────────────────────────────────────────────────
 
 function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
-  onRegistrants, onVolunteers, onFinishData }: {
+  onVolunteers, onFinishData }: {
   event: EventDoc; isFinished: boolean; fmtDate: (d: Date) => string;
   onEdit: () => void; onDelete: () => void;
-  onRegistrants: () => void; onVolunteers: () => void; onFinishData: () => void;
+  onVolunteers: () => void; onFinishData: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isReg = ev.type === 'registration';
   const isPast = ev.date < new Date();
 
-  const typeColor = isReg ? C.success : C.primary;
-  const typeBg    = isReg ? C.successBg : C.primaryBg;
+  const typeColor  = isReg ? C.success  : C.primary;
+  const typeBg     = isReg ? C.successBg : C.primaryBg;
   const typeBorder = isReg ? C.successBorder : C.primaryBorder;
 
-  const statusColor  = isFinished ? C.muted : (isPast && !isReg ? C.warn : typeColor);
-  const statusBg     = isFinished ? '#f1f5f9' : (isPast && !isReg ? C.warnBg : typeBg);
-  const statusBorder = isFinished ? C.border  : (isPast && !isReg ? C.warnBorder : typeBorder);
+  const statusColor  = isFinished ? C.muted   : (isPast && !isReg ? C.warn      : typeColor);
+  const statusBg     = isFinished ? '#f1f5f9' : (isPast && !isReg ? C.warnBg    : typeBg);
+  const statusBorder = isFinished ? C.border   : (isPast && !isReg ? C.warnBorder : typeBorder);
 
   return (
     <div style={{ background: C.card, borderRadius: 12,
       border: `1.5px solid ${isFinished ? C.border : typeBorder}`,
       boxShadow: '0 2px 8px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
 
-      {/* Header row */}
+      {/* Clickable header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
         cursor: 'pointer' }} onClick={() => setExpanded(v => !v)}>
 
@@ -458,26 +702,25 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
           </p>
         </div>
 
-        {/* Expand arrow */}
+        {/* Expand chevron */}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.muted}
           strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: '0.2s' }}>
+          style={{ flexShrink: 0, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </div>
 
-      {/* Expanded actions + details */}
+      {/* Expanded section */}
       {expanded && (
         <>
+          {/* Action buttons */}
           <div style={{ borderTop: `1px solid ${C.border}`, padding: '10px 14px' }}>
             <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
               <ActionChip icon={<EditIcon />} label="Edit" onClick={onEdit} />
-              {isReg
-                ? <ActionChip icon={<PeopleIcon />} label={`Registran (${ev.currentRegistrants})`}
-                    onClick={onRegistrants} color={C.success} bg={C.successBg} border={C.successBorder} />
-                : <ActionChip icon={<PeopleIcon />} label={`Petugas (${ev.assignments?.length ?? 0})`}
-                    onClick={onVolunteers} color={C.primary} bg={C.primaryBg} border={C.primaryBorder} />
-              }
+              {!isReg && (
+                <ActionChip icon={<PeopleIcon />} label={`Petugas (${ev.assignments?.length ?? 0})`}
+                  onClick={onVolunteers} />
+              )}
               {!isReg && isFinished && (
                 <ActionChip icon={<ChartIcon />} label="Data Ibadah" onClick={onFinishData} />
               )}
@@ -486,10 +729,20 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
             </div>
           </div>
 
-          {/* Detail info */}
+          {/* Details panel */}
           <div style={{ borderTop: `1px solid ${C.border}`, padding: '14px 16px', background: C.bg }}>
             {isReg ? (
-              <RegistrationDetails ev={ev} />
+              <>
+                <RegistrationDetails ev={ev} />
+                {/* Divider */}
+                <div style={{ height: 1, background: C.border, margin: '16px 0' }} />
+                {/* Inline registrants list */}
+                <RegistrantsInlinePanel
+                  eventId={ev.id}
+                  capacity={ev.capacity ?? 0}
+                  fmtDate={fmtDate}
+                />
+              </>
             ) : (
               <ServiceDetails ev={ev} />
             )}
@@ -500,19 +753,26 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
   );
 }
 
+// ─── Detail sub-components ────────────────────────────────────────────────────
+
 function RegistrationDetails({ ev }: { ev: EventDoc }) {
   const deadlinePassed = ev.registrationDeadline && ev.registrationDeadline < new Date();
+  const truncateDetails = (text: string, maxWords: number = 10) => {
+    const words = text.split(/\s+/);
+    return words.length > maxWords ? words.slice(0, maxWords).join(' ') + '...' : text;
+  };
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', fontSize: 13 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px' }}>
       <InfoRow label="Kapasitas" value={`${ev.capacity} orang`} />
       <InfoRow label="Terdaftar" value={`${ev.currentRegistrants} orang`} />
       {ev.registrationDeadline && (
         <InfoRow label="Deadline"
-          value={ev.registrationDeadline.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+          value={ev.registrationDeadline.toLocaleDateString('id-ID',
+            { day: 'numeric', month: 'short', year: 'numeric' })
             + (deadlinePassed ? ' (BERAKHIR)' : '')}
           valueColor={deadlinePassed ? C.error : undefined} />
       )}
-      {ev.details && <InfoRow label="Detail" value={ev.details} />}
+      {ev.details && <InfoRow label="Detail" value={truncateDetails(ev.details)} />}
     </div>
   );
 }
@@ -569,7 +829,7 @@ function InfoRow({ label, value, valueColor }: { label: string; value: string; v
   );
 }
 
-// ─── Kebaktian create/edit modal ──────────────────────────────────────────────
+// ─── Kebaktian modal ──────────────────────────────────────────────────────────
 
 function KebaktianModal({ schedules, existing, onClose }: {
   schedules: Schedule[]; existing: EventDoc | null; onClose: () => void;
@@ -584,16 +844,12 @@ function KebaktianModal({ schedules, existing, onClose }: {
     if (!date) return;
     setSaving(true);
     try {
-      const payload = {
-        ministry, description,
-        date: Timestamp.fromDate(new Date(date)),
-      };
+      const payload = { ministry, description, date: Timestamp.fromDate(new Date(date)) };
       if (existing) {
         await updateDoc(doc(db, 'service_events', existing.id), payload);
       } else {
         await addDoc(collection(db, 'service_events'), {
-          ...payload, assignments: [], is_finished: false,
-          createdAt: Timestamp.now(),
+          ...payload, assignments: [], is_finished: false, createdAt: Timestamp.now(),
         });
       }
       onClose();
@@ -635,7 +891,7 @@ function KebaktianModal({ schedules, existing, onClose }: {
   );
 }
 
-// ─── Registration create/edit modal ──────────────────────────────────────────
+// ─── Registration modal ───────────────────────────────────────────────────────
 
 function RegistrationModal({ existing, onClose }: {
   existing: EventDoc | null; onClose: () => void;
@@ -646,7 +902,6 @@ function RegistrationModal({ existing, onClose }: {
     existing?.registrationDeadline ? existing.registrationDeadline.toISOString().slice(0, 10) : ''
   );
   const [capacity, setCapacity] = useState(String(existing?.capacity ?? ''));
-  const [description, setDescription] = useState(existing?.description ?? '');
   const [details, setDetails] = useState(existing?.details ?? '');
   const [saving, setSaving] = useState(false);
 
@@ -656,7 +911,7 @@ function RegistrationModal({ existing, onClose }: {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        type: 'registration', title, description, details,
+        type: 'registration', title, details,
         date: Timestamp.fromDate(new Date(date)),
         capacity: parseInt(capacity),
         registrationDeadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
@@ -665,8 +920,7 @@ function RegistrationModal({ existing, onClose }: {
         await updateDoc(doc(db, 'events', existing.id), payload);
       } else {
         await addDoc(collection(db, 'events'), {
-          ...payload, currentRegistrants: 0, is_finished: false,
-          createdAt: Timestamp.now(),
+          ...payload, currentRegistrants: 0, is_finished: false, createdAt: Timestamp.now(),
         });
       }
       onClose();
@@ -697,11 +951,6 @@ function RegistrationModal({ existing, onClose }: {
           <Input type="number" value={capacity} onChange={e => setCapacity(e.target.value)}
             placeholder="50" min="1" required />
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <FieldLabel>Deskripsi Singkat</FieldLabel>
-          <TextArea rows={2} value={description} onChange={e => setDescription(e.target.value)}
-            placeholder="Tampil di list event..." />
-        </div>
         <div style={{ marginBottom: 20 }}>
           <FieldLabel>Detail Lengkap</FieldLabel>
           <TextArea rows={4} value={details} onChange={e => setDetails(e.target.value)}
@@ -716,103 +965,6 @@ function RegistrationModal({ existing, onClose }: {
           </button>
         </div>
       </form>
-    </Modal>
-  );
-}
-
-// ─── Registrants modal ────────────────────────────────────────────────────────
-
-function RegistrantsModal({ event: ev, onClose, fmtDate }: {
-  event: EventDoc; onClose: () => void; fmtDate: (d: Date) => string;
-}) {
-  const [registrants, setRegistrants] = useState<Registrant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsub = onSnapshot(
-      query(collection(db, 'registrations'), where('eventId', '==', ev.id)),
-      snap => {
-        const list = snap.docs.map(d => {
-          const data = d.data();
-          return {
-            id: d.id, name: data.name ?? 'Unknown',
-            contact: data.contact ?? '-',
-            description: data.description,
-            documentUrl: data.documentUrl,
-            registeredAt: data.registeredAt ? (data.registeredAt as Timestamp).toDate() : undefined,
-          };
-        }).sort((a, b) => (b.registeredAt?.getTime() ?? 0) - (a.registeredAt?.getTime() ?? 0));
-        setRegistrants(list);
-        setLoading(false);
-      }
-    );
-    return () => unsub();
-  }, [ev.id]);
-
-  const handleDelete = async (r: Registrant) => {
-    if (!confirm(`Hapus registrasi ${r.name}?`)) return;
-    setDeletingId(r.id);
-    try {
-      await deleteDoc(doc(db, 'registrations', r.id));
-      await updateDoc(doc(db, 'events', ev.id), { currentRegistrants: increment(-1) });
-    } catch (e) { console.error(e); }
-    finally { setDeletingId(null); }
-  };
-
-  return (
-    <Modal title={`Registran — ${ev.title}`} onClose={onClose} width={600}>
-      <p style={{ margin: '0 0 14px', fontSize: 13, color: C.muted }}>
-        {registrants.length} dari {ev.capacity} terdaftar
-      </p>
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 24, color: C.muted }}>Memuat...</div>
-      ) : registrants.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 32, color: C.muted, fontSize: 13 }}>
-          Belum ada registran.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 480, overflowY: 'auto' }}>
-          {registrants.map(r => (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12,
-              padding: '12px 14px', borderRadius: 9, border: `1.5px solid ${C.border}`,
-              background: C.bg }}>
-              <div style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                background: C.primaryBg, color: C.primary, display: 'flex',
-                alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>
-                {r.name[0]?.toUpperCase()}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{r.name}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: C.muted }}>
-                  {r.contact}
-                  {r.registeredAt && ` · ${fmtDate(r.registeredAt)}`}
-                </p>
-                {r.description && (
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: C.sub,
-                    fontStyle: 'italic' }}>{r.description}</p>
-                )}
-              </div>
-              {r.documentUrl && (
-                <a href={r.documentUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize: 11, color: C.primary, fontWeight: 700, textDecoration: 'none',
-                    background: C.primaryBg, border: `1px solid ${C.primaryBorder}`,
-                    borderRadius: 5, padding: '3px 8px', flexShrink: 0 }}>
-                  Dokumen
-                </a>
-              )}
-              <button onClick={() => handleDelete(r)} disabled={deletingId === r.id}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 28, height: 28, borderRadius: 6, flexShrink: 0,
-                  background: C.errorBg, border: `1.5px solid ${C.errorBorder}`,
-                  color: C.error, cursor: deletingId === r.id ? 'not-allowed' : 'pointer',
-                  opacity: deletingId === r.id ? 0.5 : 1 }}>
-                <TrashIcon />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
     </Modal>
   );
 }
@@ -844,12 +996,8 @@ function VolunteersModal({ event: ev, onClose }: { event: EventDoc; onClose: () 
                   {a.volunteerName[0]?.toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>
-                    {a.volunteerName}
-                  </p>
-                  <p style={{ margin: '2px 0 0', fontSize: 12, color: C.muted }}>
-                    Tugas: {a.role}
-                  </p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>{a.volunteerName}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: C.muted }}>Tugas: {a.role}</p>
                 </div>
                 <span style={{ fontSize: 10, fontWeight: 800, color: sc,
                   background: sc + '18', border: `1px solid ${sc}33`,
@@ -865,7 +1013,7 @@ function VolunteersModal({ event: ev, onClose }: { event: EventDoc; onClose: () 
   );
 }
 
-// ─── Finish data (attendance + offering) modal ────────────────────────────────
+// ─── Finish data modal ────────────────────────────────────────────────────────
 
 function FinishDataModal({ event: ev, onClose }: { event: EventDoc; onClose: () => void }) {
   const [attCount, setAttCount] = useState(String(ev.attendance_count ?? ''));
@@ -892,7 +1040,7 @@ function FinishDataModal({ event: ev, onClose }: { event: EventDoc; onClose: () 
   return (
     <Modal title={`Data Ibadah — ${ev.title}`} onClose={onClose}>
       <form onSubmit={handleSave}>
-        <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: C.sub,
+        <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: C.sub,
           textTransform: 'uppercase', letterSpacing: '0.07em' }}>Kehadiran</p>
         <div style={{ marginBottom: 12 }}>
           <FieldLabel>Jumlah Kehadiran</FieldLabel>
@@ -903,7 +1051,7 @@ function FinishDataModal({ event: ev, onClose }: { event: EventDoc; onClose: () 
           <TextArea rows={2} value={attNotes} onChange={e => setAttNotes(e.target.value)} />
         </div>
         <div style={{ height: 1, background: C.border, marginBottom: 16 }} />
-        <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: C.sub,
+        <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 700, color: C.sub,
           textTransform: 'uppercase', letterSpacing: '0.07em' }}>Persembahan</p>
         <div style={{ marginBottom: 12 }}>
           <FieldLabel>Total Persembahan (Rp)</FieldLabel>
