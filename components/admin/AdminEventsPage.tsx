@@ -48,6 +48,7 @@ interface Registrant {
 }
 
 interface Schedule { id: string; name: string; }
+interface Volunteer { id: string; name: string; ministries: string[]; }
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -243,7 +244,6 @@ function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [detailRegistrant, setDetailRegistrant] = useState<Registrant | null>(null);
-  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -308,108 +308,84 @@ function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
           Belum ada registran.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Search bar */}
-          <input
-            type="text"
-            placeholder="Cari nama..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 6,
-              border: `1.5px solid ${C.border}`,
-              fontSize: 12,
-              fontFamily: 'inherit',
-              transition: 'border-color 0.15s',
-            }}
-            onFocus={e => (e.currentTarget.style.borderColor = C.primary)}
-            onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-          />
-
-          {/* Scrollable table */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: '280px', overflowY: 'auto' }}>
-            {/* Column header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto auto',
-              gap: '0 12px', padding: '5px 10px',
-              background: '#f1f5f9', borderRadius: 7, position: 'sticky', top: 0 }}>
-              {['Nama', 'Kontak', 'Dok.', ''].map((h, i) => (
-                <span key={i} style={{ fontSize: 10, fontWeight: 700, color: C.muted,
-                  textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
-              ))}
-            </div>
-
-            {/* Filtered and display rows */}
-            {registrants
-              .filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
-              .slice(0, 3)
-              .map(r => (
-              <div key={r.id} onClick={() => setDetailRegistrant(r)}
-                style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto auto',
-                  gap: '0 12px', padding: '9px 10px', borderRadius: 8,
-                  border: `1.5px solid ${C.border}`, background: C.card,
-                  alignItems: 'center', cursor: 'pointer', transition: 'background 0.12s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f5f7ff')}
-                onMouseLeave={e => (e.currentTarget.style.background = C.card)}
-              >
-                {/* Name + date */}
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {r.name}
-                  </p>
-                  {r.registeredAt && (
-                    <p style={{ margin: '1px 0 0', fontSize: 10, color: C.muted }}>
-                      {fmtDate(r.registeredAt)}
-                    </p>
-                  )}
-                </div>
-
-                {/* Contact */}
-                <p style={{ margin: 0, fontSize: 12, color: C.sub,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {r.contact}
-                </p>
-
-                {/* Document */}
-                {r.documentUrl ? (
-                  <a href={r.documentUrl} target="_blank" rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, fontWeight: 700, color: C.primary,
-                      background: C.primaryBg, border: `1px solid ${C.primaryBorder}`,
-                      borderRadius: 5, padding: '3px 8px', textDecoration: 'none',
-                      whiteSpace: 'nowrap' }}>
-                    <DocIcon /> Lihat
-                  </a>
-                ) : (
-                  <span style={{ fontSize: 11, color: C.muted }}>—</span>
-                )}
-
-                {/* Delete */}
-                <button onClick={e => { e.stopPropagation(); handleDelete(r); }}
-                  disabled={deletingId === r.id}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-                    background: C.errorBg, border: `1.5px solid ${C.errorBorder}`,
-                    color: C.error, cursor: deletingId === r.id ? 'not-allowed' : 'pointer',
-                    opacity: deletingId === r.id ? 0.5 : 1, transition: 'all 0.15s' }}
-                  onMouseEnter={e => {
-                    if (deletingId !== r.id) {
-                      (e.currentTarget as HTMLButtonElement).style.background = C.error;
-                      (e.currentTarget as HTMLButtonElement).style.color = '#fff';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = C.errorBg;
-                    (e.currentTarget as HTMLButtonElement).style.color = C.error;
-                  }}
-                >
-                  <TrashIcon />
-                </button>
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {/* Column header */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto auto',
+            gap: '0 12px', padding: '5px 10px',
+            background: '#f1f5f9', borderRadius: 7 }}>
+            {['Nama', 'Kontak', 'Dok.', ''].map((h, i) => (
+              <span key={i} style={{ fontSize: 10, fontWeight: 700, color: C.muted,
+                textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
             ))}
           </div>
+
+          {/* Rows */}
+          {registrants.map(r => (
+            <div key={r.id} onClick={() => setDetailRegistrant(r)}
+              style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto auto',
+                gap: '0 12px', padding: '9px 10px', borderRadius: 8,
+                border: `1.5px solid ${C.border}`, background: C.card,
+                alignItems: 'center', cursor: 'pointer', transition: 'background 0.12s' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#f5f7ff')}
+              onMouseLeave={e => (e.currentTarget.style.background = C.card)}
+            >
+              {/* Name + date */}
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {r.name}
+                </p>
+                {r.registeredAt && (
+                  <p style={{ margin: '1px 0 0', fontSize: 10, color: C.muted }}>
+                    {fmtDate(r.registeredAt)}
+                  </p>
+                )}
+              </div>
+
+              {/* Contact */}
+              <p style={{ margin: 0, fontSize: 12, color: C.sub,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {r.contact}
+              </p>
+
+              {/* Document */}
+              {r.documentUrl ? (
+                <a href={r.documentUrl} target="_blank" rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4,
+                    fontSize: 11, fontWeight: 700, color: C.primary,
+                    background: C.primaryBg, border: `1px solid ${C.primaryBorder}`,
+                    borderRadius: 5, padding: '3px 8px', textDecoration: 'none',
+                    whiteSpace: 'nowrap' }}>
+                  <DocIcon /> Lihat
+                </a>
+              ) : (
+                <span style={{ fontSize: 11, color: C.muted }}>—</span>
+              )}
+
+              {/* Delete */}
+              <button onClick={e => { e.stopPropagation(); handleDelete(r); }}
+                disabled={deletingId === r.id}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                  background: C.errorBg, border: `1.5px solid ${C.errorBorder}`,
+                  color: C.error, cursor: deletingId === r.id ? 'not-allowed' : 'pointer',
+                  opacity: deletingId === r.id ? 0.5 : 1, transition: 'all 0.15s' }}
+                onMouseEnter={e => {
+                  if (deletingId !== r.id) {
+                    (e.currentTarget as HTMLButtonElement).style.background = C.error;
+                    (e.currentTarget as HTMLButtonElement).style.color = '#fff';
+                  }
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = C.errorBg;
+                  (e.currentTarget as HTMLButtonElement).style.color = C.error;
+                }}
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -757,10 +733,6 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
 
 function RegistrationDetails({ ev }: { ev: EventDoc }) {
   const deadlinePassed = ev.registrationDeadline && ev.registrationDeadline < new Date();
-  const truncateDetails = (text: string, maxWords: number = 10) => {
-    const words = text.split(/\s+/);
-    return words.length > maxWords ? words.slice(0, maxWords).join(' ') + '...' : text;
-  };
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px' }}>
       <InfoRow label="Kapasitas" value={`${ev.capacity} orang`} />
@@ -772,7 +744,7 @@ function RegistrationDetails({ ev }: { ev: EventDoc }) {
             + (deadlinePassed ? ' (BERAKHIR)' : '')}
           valueColor={deadlinePassed ? C.error : undefined} />
       )}
-      {ev.details && <InfoRow label="Detail" value={truncateDetails(ev.details)} />}
+      {ev.details && <InfoRow label="Detail" value={ev.details} />}
     </div>
   );
 }
@@ -839,17 +811,66 @@ function KebaktianModal({ schedules, existing, onClose }: {
   const [description, setDescription] = useState(existing?.description ?? '');
   const [saving, setSaving] = useState(false);
 
+  // ── Assignment state ──
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>(
+    existing?.assignments ?? []
+  );
+  const [selectedVolId, setSelectedVolId] = useState('');
+  const [roleInput, setRoleInput] = useState('');
+
+  // Load volunteers (role === 'volunteer') once on mount
+  useEffect(() => {
+    getDocs(query(collection(db, 'users'), where('role', '==', 'volunteer'))).then(snap => {
+      const vols: Volunteer[] = snap.docs.map(d => ({
+        id: d.id,
+        name: d.data().name ?? 'Tanpa Nama',
+        ministries: d.data().ministries ?? [],
+      })).sort((a, b) => a.name.localeCompare(b.name, 'id'));
+      setVolunteers(vols);
+      if (vols.length > 0 && !selectedVolId) setSelectedVolId(vols[0].id);
+    });
+  }, []);
+
+  const addAssignment = () => {
+    if (!selectedVolId || !roleInput.trim()) return;
+    const vol = volunteers.find(v => v.id === selectedVolId);
+    if (!vol) return;
+    // Prevent duplicate volunteer
+    if (assignments.some(a => a.volunteerId === selectedVolId)) return;
+    setAssignments(prev => [...prev, {
+      volunteerId: selectedVolId,
+      volunteerName: vol.name,
+      role: roleInput.trim(),
+      status: 'pending',
+    }]);
+    setRoleInput('');
+    // Move selector to next unassigned volunteer
+    const next = volunteers.find(v =>
+      v.id !== selectedVolId && !assignments.some(a => a.volunteerId === v.id) && v.id !== selectedVolId
+    );
+    if (next) setSelectedVolId(next.id);
+  };
+
+  const removeAssignment = (volunteerId: string) => {
+    setAssignments(prev => prev.filter(a => a.volunteerId !== volunteerId));
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date) return;
     setSaving(true);
     try {
-      const payload = { ministry, description, date: Timestamp.fromDate(new Date(date)) };
+      const payload = {
+        ministry, description,
+        date: Timestamp.fromDate(new Date(date)),
+        assignments,
+      };
       if (existing) {
         await updateDoc(doc(db, 'service_events', existing.id), payload);
       } else {
         await addDoc(collection(db, 'service_events'), {
-          ...payload, assignments: [], is_finished: false, createdAt: Timestamp.now(),
+          ...payload, is_finished: false, createdAt: Timestamp.now(),
         });
       }
       onClose();
@@ -857,27 +878,150 @@ function KebaktianModal({ schedules, existing, onClose }: {
     finally { setSaving(false); }
   };
 
+  const assignedIds = new Set(assignments.map(a => a.volunteerId));
+  const availableVols = volunteers.filter(v => !assignedIds.has(v.id));
+
   return (
-    <Modal title={existing ? 'Edit Kebaktian' : 'Buat Kebaktian'} onClose={onClose}>
+    <Modal title={existing ? 'Edit Kebaktian' : 'Buat Kebaktian'} onClose={onClose} width={580}>
       <form onSubmit={handleSave}>
-        <div style={{ marginBottom: 14 }}>
-          <FieldLabel>Jenis Kebaktian</FieldLabel>
-          <select value={ministry} onChange={e => setMinistry(e.target.value)}
-            required style={{ ...inputStyle }}
-            onFocus={e => (e.target.style.borderColor = C.primary)}
-            onBlur={e => (e.target.style.borderColor = C.border)}>
-            {schedules.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-          </select>
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <FieldLabel>Tanggal</FieldLabel>
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+        {/* ── Basic info ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+          <div>
+            <FieldLabel>Jenis Kebaktian</FieldLabel>
+            <select value={ministry} onChange={e => setMinistry(e.target.value)}
+              required style={{ ...inputStyle }}
+              onFocus={e => (e.target.style.borderColor = C.primary)}
+              onBlur={e => (e.target.style.borderColor = C.border)}>
+              {schedules.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <FieldLabel>Tanggal</FieldLabel>
+            <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+          </div>
         </div>
         <div style={{ marginBottom: 20 }}>
           <FieldLabel>Keterangan / Tema (opsional)</FieldLabel>
           <TextArea rows={2} value={description} onChange={e => setDescription(e.target.value)}
             placeholder="Tema ibadah, catatan khusus..." />
         </div>
+
+        {/* ── Assignments section ── */}
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 16, marginBottom: 20 }}>
+          <FieldLabel>Petugas / Volunteer</FieldLabel>
+
+          {/* Add row */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, marginBottom: 12 }}>
+            <select
+              value={selectedVolId}
+              onChange={e => setSelectedVolId(e.target.value)}
+              style={{ ...inputStyle, flex: 1 }}
+              onFocus={e => (e.target.style.borderColor = C.primary)}
+              onBlur={e => (e.target.style.borderColor = C.border)}
+            >
+              {availableVols.length === 0
+                ? <option value="">— Semua volunteer sudah ditambahkan —</option>
+                : availableVols.map(v => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))
+              }
+            </select>
+            <Input
+              value={roleInput}
+              onChange={e => setRoleInput(e.target.value)}
+              placeholder="Tugas, mis. Liturgos"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAssignment(); }}}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              onClick={addAssignment}
+              disabled={!selectedVolId || !roleInput.trim() || availableVols.length === 0}
+              style={{
+                padding: '9px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: (!selectedVolId || !roleInput.trim() || availableVols.length === 0)
+                  ? '#e2e8f0' : C.primary,
+                color: (!selectedVolId || !roleInput.trim() || availableVols.length === 0)
+                  ? C.muted : '#fff',
+                fontWeight: 700, fontSize: 13, fontFamily: 'inherit', flexShrink: 0,
+              }}>
+              + Tambah
+            </button>
+          </div>
+
+          {/* Assignment list */}
+          {assignments.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 12, color: C.muted, fontStyle: 'italic' }}>
+              Belum ada petugas yang ditambahkan.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {assignments.map((a, i) => {
+                const sc = a.status === 'accepted' ? C.success
+                  : a.status === 'rejected' ? C.error : C.warn;
+                const statusLabel = a.status === 'accepted' ? 'DITERIMA'
+                  : a.status === 'rejected' ? 'DITOLAK' : 'MENUNGGU';
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '9px 12px', borderRadius: 8,
+                    background: C.bg, border: `1.5px solid ${C.border}`,
+                  }}>
+                    {/* Avatar */}
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      background: C.primaryBg, color: C.primary,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 800,
+                    }}>
+                      {a.volunteerName[0]?.toUpperCase()}
+                    </div>
+                    {/* Name + role */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {a.volunteerName}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{a.role}</p>
+                    </div>
+                    {/* Status badge (only for existing assignments) */}
+                    {existing && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 800, color: sc,
+                        background: sc + '18', border: `1px solid ${sc}33`,
+                        borderRadius: 4, padding: '2px 7px', flexShrink: 0,
+                      }}>
+                        {statusLabel}
+                      </span>
+                    )}
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      onClick={() => removeAssignment(a.volunteerId)}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 24, height: 24, borderRadius: 5, flexShrink: 0,
+                        background: C.errorBg, border: `1.5px solid ${C.errorBorder}`,
+                        color: C.error, cursor: 'pointer',
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = C.error;
+                        (e.currentTarget as HTMLButtonElement).style.color = '#fff';
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.background = C.errorBg;
+                        (e.currentTarget as HTMLButtonElement).style.color = C.error;
+                      }}
+                    >
+                      <XIcon />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', gap: 8 }}>
           <SaveBtn label={existing ? 'Simpan Perubahan' : 'Buat Kebaktian'} loading={saving} />
           <button type="button" onClick={onClose} style={{ padding: '10px 16px',
@@ -902,6 +1046,7 @@ function RegistrationModal({ existing, onClose }: {
     existing?.registrationDeadline ? existing.registrationDeadline.toISOString().slice(0, 10) : ''
   );
   const [capacity, setCapacity] = useState(String(existing?.capacity ?? ''));
+  const [description, setDescription] = useState(existing?.description ?? '');
   const [details, setDetails] = useState(existing?.details ?? '');
   const [saving, setSaving] = useState(false);
 
@@ -911,7 +1056,7 @@ function RegistrationModal({ existing, onClose }: {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        type: 'registration', title, details,
+        type: 'registration', title, description, details,
         date: Timestamp.fromDate(new Date(date)),
         capacity: parseInt(capacity),
         registrationDeadline: deadline ? Timestamp.fromDate(new Date(deadline)) : null,
@@ -950,6 +1095,11 @@ function RegistrationModal({ existing, onClose }: {
           <FieldLabel>Kapasitas (orang)</FieldLabel>
           <Input type="number" value={capacity} onChange={e => setCapacity(e.target.value)}
             placeholder="50" min="1" required />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <FieldLabel>Deskripsi Singkat</FieldLabel>
+          <TextArea rows={2} value={description} onChange={e => setDescription(e.target.value)}
+            placeholder="Tampil di list event..." />
         </div>
         <div style={{ marginBottom: 20 }}>
           <FieldLabel>Detail Lengkap</FieldLabel>
