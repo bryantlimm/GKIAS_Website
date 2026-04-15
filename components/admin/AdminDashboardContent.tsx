@@ -1,9 +1,11 @@
 // components/admin/AdminDashboardContent.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/AuthContext';
 import { useRouter } from 'next/navigation';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import SettingsEditor from './SettingsEditor';
 import SchedulesEditor from './SchedulesEditor';
 import NewsManager from './NewsManager';
@@ -13,6 +15,14 @@ import VideoSectionEditor from './VideoSectionEditor';
 import VolunteerRequestsManager from './VolunteerRequestsManager';
 import AdminHomePage from './AdminHomePage';
 import AdminEventsPage from './AdminEventsPage';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface UserData {
+  name: string;
+  email: string;
+  role: 'regular' | 'volunteer' | 'admin';
+}
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -142,10 +152,63 @@ const halamanTabs: HalamanTabConfig[] = [
 export default function AdminDashboardContent() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const [activeMenu, setActiveMenu] = useState<MainMenu>('home');
   const [activeTab, setActiveTab] = useState<HalamanTab>('settings');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch user data from Firestore
+  useEffect(() => {
+    if (!user) return;
+    const fetchUserData = async () => {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data() as UserData;
+          setUserData(data);
+          setEditedName(data.name || '');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    fetchUserData();
+  }, [user]);
+
+  // Close profile popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    if (isProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isProfileOpen]);
+
+  const handleSaveName = async () => {
+    if (!user || !editedName.trim()) return;
+    setIsSaving(true);
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, { name: editedName.trim() });
+      setUserData(prev => prev ? { ...prev, name: editedName.trim() } : null);
+      setIsEditingName(false);
+    } catch (error) {
+      console.error('Error updating name:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -334,14 +397,176 @@ export default function AdminDashboardContent() {
               <button className="icon-btn" title="Notifikasi" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center' }}>
                 <BellIcon />
               </button>
-              <div style={{
-                width: 34, height: 34,
-                background: '#eff3ff',
-                borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#3b5bdb', cursor: 'pointer', marginLeft: 4,
-              }}>
-                <UserIcon />
+              <div
+                ref={profileRef}
+                style={{ position: 'relative' }}
+              >
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  title="Profil"
+                  className="icon-btn"
+                  style={{
+                    width: 34, height: 34,
+                    background: '#eff3ff',
+                    borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#3b5bdb', cursor: 'pointer', marginLeft: 4,
+                    border: 'none',
+                    padding: 0,
+                  }}
+                >
+                  <UserIcon />
+                </button>
+
+                {/* Profile Popup */}
+                {isProfileOpen && userData && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 8,
+                    width: 280,
+                    background: '#ffffff',
+                    border: '1px solid #e8ecf0',
+                    borderRadius: 8,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    zIndex: 1000,
+                    overflow: 'hidden',
+                  }}>
+                    {/* Header */}
+                    <div style={{
+                      padding: '12px 16px',
+                      borderBottom: '1px solid #e8ecf0',
+                      background: '#f8fafc',
+                    }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                        {userData.name || 'User'}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>
+                        {userData.email}
+                      </p>
+                    </div>
+
+                    {/* Account Type */}
+                    <div style={{ padding: '12px 16px' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: 12, color: '#64748b', fontWeight: 600 }}>Tipe Akun</p>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '4px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: userData.role === 'admin' ? '#fed7aa' : userData.role === 'volunteer' ? '#bfdbfe' : '#e2e8f0',
+                        color: userData.role === 'admin' ? '#92400e' : userData.role === 'volunteer' ? '#1e40af' : '#334155',
+                      }}>
+                        {userData.role === 'admin' ? 'Admin' : userData.role === 'volunteer' ? 'Volunteer' : 'Regular'}
+                      </span>
+                    </div>
+
+                    {/* Edit Name Section */}
+                    {!isEditingName ? (
+                      <div style={{ padding: '8px 16px', borderTop: '1px solid #e8ecf0' }}>
+                        <button
+                          onClick={() => setIsEditingName(true)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: '#f1f5f9',
+                            border: 'none',
+                            borderRadius: 6,
+                            color: '#3b5bdb',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Edit Nama
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '12px 16px', borderTop: '1px solid #e8ecf0' }}>
+                        <input
+                          type="text"
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            marginBottom: 8,
+                            border: '1px solid #cbd5e1',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            fontFamily: 'inherit',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={handleSaveName}
+                            disabled={isSaving}
+                            style={{
+                              flex: 1,
+                              padding: '6px 12px',
+                              background: '#3b5bdb',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: isSaving ? 'not-allowed' : 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              opacity: isSaving ? 0.6 : 1,
+                            }}
+                          >
+                            {isSaving ? 'Menyimpan...' : 'Simpan'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingName(false);
+                              setEditedName(userData.name || '');
+                            }}
+                            disabled={isSaving}
+                            style={{
+                              flex: 1,
+                              padding: '6px 12px',
+                              background: '#f1f5f9',
+                              color: '#64748b',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: isSaving ? 'not-allowed' : 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              opacity: isSaving ? 0.6 : 1,
+                            }}
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Logout Button */}
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        handleLogout();
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderTop: '1px solid #e8ecf0',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textAlign: 'left',
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </header>
