@@ -161,7 +161,7 @@ export default function AdminDashboardContent() {
     { id: 'home',          label: 'Home',               icon: <HomeIcon /> },
     { id: 'halaman-utama', label: 'Halaman Utama',      icon: <GridIcon /> },
     { id: 'warta',         label: 'Warta',              icon: <NewsIcon /> },
-    { id: 'volunteer',     label: 'Permintaan Pelayanan', icon: <PeopleIcon /> },
+    { id: 'volunteer',     label: 'Users Manager', icon: <PeopleIcon /> },
     { id: 'events',        label: 'Events',              icon: <CalendarEvIcon /> },
   ];
 
