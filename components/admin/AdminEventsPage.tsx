@@ -923,18 +923,20 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
                 <ActionChip icon={<PeopleIcon />} label={`Petugas (${ev.assignments?.length ?? 0})`}
                   onClick={onVolunteers} />
               )}
-              {!isReg && isFinished && (
+              {!isReg && (
                 <ActionChip icon={<ChartIcon />} label="Data Ibadah" onClick={onFinishData} />
               )}
-              <ActionChip 
-                icon={ev.is_finished ? <ClockIcon /> : <CheckIcon />} 
-                label={ev.is_finished ? 'Belum Selesai' : 'Tandai Selesai'}
-                color={ev.is_finished ? C.warn : C.success}
-                bg={ev.is_finished ? C.warnBg : C.successBg}
-                border={ev.is_finished ? C.warnBorder : C.successBorder}
-                onClick={handleToggleStatus}
-                disabled={togglingStatus}
-              />
+              {!isReg && (
+                <ActionChip 
+                  icon={ev.is_finished ? <ClockIcon /> : <CheckIcon />} 
+                  label={ev.is_finished ? 'Belum Selesai' : 'Tandai Selesai'}
+                  color={ev.is_finished ? C.warn : C.success}
+                  bg={ev.is_finished ? C.warnBg : C.successBg}
+                  border={ev.is_finished ? C.warnBorder : C.successBorder}
+                  onClick={handleToggleStatus}
+                  disabled={togglingStatus}
+                />
+              )}
               <ActionChip icon={<TrashIcon />} label="Hapus"
                 color={C.error} bg={C.errorBg} border={C.errorBorder} onClick={onDelete} />
             </div>
