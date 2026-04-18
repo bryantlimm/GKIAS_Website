@@ -1,12 +1,13 @@
 // components/admin/AdminHomePage.tsx
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import {
   collection, query, where, getDocs, onSnapshot,
   deleteDoc, doc, Timestamp,
 } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ interface UserAccount {
   createdAt?: Date;
 }
 
-// ─── Colour palette (matches dashboard) ──────────────────────────────────────
+// ─── Colour palette ───────────────────────────────────────────────────────────
 const C = {
   primary:  '#3b5bdb',
   primaryDark: '#2f4ac7',
@@ -66,7 +67,7 @@ const C = {
   errorBorder:'#fecaca',
 };
 
-// ─── Small reusable primitives ────────────────────────────────────────────────
+// ─── Primitives ───────────────────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -162,7 +163,7 @@ function RoleTag({ role }: { role: string }) {
   );
 }
 
-// ─── Mini Line Chart (pure SVG, no deps) ─────────────────────────────────────
+// ─── Line Chart ───────────────────────────────────────────────────────────────
 
 function LineChart({
   data, width = 600, height = 220,
@@ -190,10 +191,7 @@ function LineChart({
   const points = data.map((d, i) => `${xScale(i)},${yScale(d.value)}`).join(' ');
   const areaPoints = `0,${H} ` + data.map((d, i) => `${xScale(i)},${yScale(d.value)}`).join(' ') + ` ${xScale(data.length - 1)},${H}`;
 
-  // Y-axis ticks
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => Math.round(minVal + t * (maxVal - minVal)));
-
-  // X-axis: show up to 12 labels evenly spaced
   const xTickEvery = Math.ceil(data.length / 12);
   const xTicks = data.filter((_, i) => i % xTickEvery === 0 || i === data.length - 1);
 
@@ -206,43 +204,437 @@ function LineChart({
         </linearGradient>
       </defs>
       <g transform={`translate(${PAD.left},${PAD.top})`}>
-        {/* Grid lines */}
         {yTicks.map(t => (
           <g key={t}>
-            <line x1={0} y1={yScale(t)} x2={W} y2={yScale(t)}
-              stroke={C.border} strokeWidth={1} strokeDasharray="4 4" />
-            <text x={-8} y={yScale(t) + 4} textAnchor="end"
-              fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
+            <line x1={0} y1={yScale(t)} x2={W} y2={yScale(t)} stroke={C.border} strokeWidth={1} strokeDasharray="4 4" />
+            <text x={-8} y={yScale(t) + 4} textAnchor="end" fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
               {t.toLocaleString('id-ID')}
             </text>
           </g>
         ))}
-
-        {/* Area fill */}
         <polygon points={areaPoints} fill="url(#chartGrad)" />
-
-        {/* Line */}
-        <polyline points={points} fill="none" stroke={C.primary} strokeWidth={2.5}
-          strokeLinejoin="round" strokeLinecap="round" />
-
-        {/* Data dots */}
+        <polyline points={points} fill="none" stroke={C.primary} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
         {data.map((d, i) => (
-          <circle key={i} cx={xScale(i)} cy={yScale(d.value)} r={3}
-            fill={C.card} stroke={C.primary} strokeWidth={2} />
+          <circle key={i} cx={xScale(i)} cy={yScale(d.value)} r={3} fill={C.card} stroke={C.primary} strokeWidth={2} />
         ))}
-
-        {/* X-axis labels */}
         {xTicks.map((d, i) => {
           const origI = data.indexOf(d);
           return (
-            <text key={i} x={xScale(origI)} y={H + 18} textAnchor="middle"
-              fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
+            <text key={i} x={xScale(origI)} y={H + 18} textAnchor="middle" fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
               {d.date}
             </text>
           );
         })}
       </g>
     </svg>
+  );
+}
+
+// ─── Export CSV Modal ─────────────────────────────────────────────────────────
+
+function ExportOfferingModal({
+  onClose,
+  finishedEvents,
+  ministries,
+}: {
+  onClose: () => void;
+  finishedEvents: ServiceEvent[];
+  ministries: string[];
+}) {
+  const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+  const thisMonthStart = () => {
+    const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d;
+  };
+
+  const [from, setFrom] = useState(toDateStr(thisMonthStart()));
+  const [to, setTo]     = useState(toDateStr(new Date()));
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMinistries, setSelectedMinistries] = useState<Set<string>>(new Set(ministries));
+
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Handle "Semua" checkbox
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedMinistries(new Set(ministries));
+    } else {
+      setSelectedMinistries(new Set());
+    }
+  };
+
+  // Handle individual ministry checkbox
+  const handleMinistryToggle = (ministry: string) => {
+    const updated = new Set(selectedMinistries);
+    if (updated.has(ministry)) {
+      updated.delete(ministry);
+    } else {
+      updated.add(ministry);
+    }
+    setSelectedMinistries(updated);
+  };
+
+  // Close on backdrop click
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) onClose();
+  };
+
+  // Preview: how many rows will be exported
+  const previewCount = useMemo(() => {
+    const f = new Date(from); f.setHours(0,0,0,0);
+    const t = new Date(to);   t.setHours(23,59,59,999);
+    const dates = new Set(
+      finishedEvents
+        .filter(e => e.offering_amount !== undefined && e.date >= f && e.date <= t)
+        .map(e => e.date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }))
+    );
+    return dates.size;
+  }, [from, to, finishedEvents]);
+
+  const handleExport = () => {
+    setError(null);
+    if (!from || !to) { setError('Pilih rentang tanggal terlebih dahulu.'); return; }
+    if (from > to)    { setError('Tanggal mulai tidak boleh setelah tanggal akhir.'); return; }
+    if (selectedMinistries.size === 0) { setError('Pilih setidaknya satu pelayanan.'); return; }
+
+    setExporting(true);
+
+    try {
+      const f = new Date(from); f.setHours(0,0,0,0);
+      const t = new Date(to);   t.setHours(23,59,59,999);
+
+      // Filter events in range that have offering data and are in selected ministries
+      const inRange = finishedEvents.filter(
+        e => e.offering_amount !== undefined && e.date >= f && e.date <= t && selectedMinistries.has(e.ministry)
+      );
+
+      if (inRange.length === 0) {
+        setError('Tidak ada data persembahan dalam rentang tanggal ini.');
+        setExporting(false);
+        return;
+      }
+
+      // Build date → ministry → amount map
+      // Date key: locale string for display
+      const dateKeyOf = (d: Date) =>
+        d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      const map: Record<string, Record<string, number>> = {};
+      for (const e of inRange) {
+        const dk = dateKeyOf(e.date);
+        if (!map[dk]) map[dk] = {};
+        map[dk][e.ministry] = (map[dk][e.ministry] ?? 0) + (e.offering_amount ?? 0);
+      }
+
+      // Sort dates chronologically
+      const sortedDates = Object.keys(map).sort((a, b) => {
+        // parse dd/mm/yyyy
+        const parse = (s: string) => {
+          const [d, m, y] = s.split('/');
+          return new Date(+y, +m - 1, +d).getTime();
+        };
+        return parse(a) - parse(b);
+      });
+
+      // Only include selected ministries
+      const ministriesInRange = Array.from(selectedMinistries).filter(m =>
+        inRange.some(e => e.ministry === m)
+      );
+
+      if (ministriesInRange.length === 0) {
+        setError('Tidak ada data untuk pelayanan yang dipilih dalam rentang tanggal ini.');
+        setExporting(false);
+        return;
+      }
+
+      // Build rows: header + data (transposed: ministries in rows, dates in columns)
+      const header = ['Pelayanan', ...sortedDates];
+      const rows = ministriesInRange.map(ministry => {
+        return [
+          ministry,
+          ...sortedDates.map(dk => map[dk][ministry] ?? 0),
+        ];
+      });
+
+      // Grand total row
+      const totalRow = ['TOTAL', ...sortedDates.map(dk =>
+        ministriesInRange.reduce((sum, m) => sum + (map[dk][m] ?? 0), 0)
+      )];
+
+      // Build worksheet
+      const wsData = [header, ...rows, totalRow];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Column widths
+      ws['!cols'] = [
+        { wch: 18 }, // Pelayanan
+        ...sortedDates.map(() => ({ wch: 14 })),
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Persembahan');
+
+      // Filename: persembahan_YYYYMMDD-YYYYMMDD.xlsx
+      const fn = (s: string) => s.split('/').reverse().join(''); // ddmmyyyy → yyyymmdd... actually just use from/to
+      const fileFrom = from.replace(/-/g, '');
+      const fileTo   = to.replace(/-/g, '');
+      XLSX.writeFile(wb, `persembahan_${fileFrom}-${fileTo}.xlsx`);
+
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setError('Terjadi kesalahan saat mengekspor. Silakan coba lagi.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '9px 12px',
+    border: `1.5px solid ${C.border}`, borderRadius: 8,
+    fontSize: 14, color: C.text, background: '#fff',
+    outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
+  };
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(15,23,42,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+        backdropFilter: 'blur(2px)',
+      }}
+    >
+      <div style={{
+        background: '#fff', borderRadius: 16,
+        border: `1.5px solid ${C.border}`,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.16)',
+        width: '100%', maxWidth: 440,
+        overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 24px 16px',
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 9,
+              background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: C.primary, flexShrink: 0,
+            }}>
+              <DownloadIcon />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>Ekspor Persembahan</p>
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Unduh data sebagai file Excel (.xlsx)</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: C.muted, padding: 4, display: 'flex', alignItems: 'center',
+              borderRadius: 6,
+            }}
+          >
+            <XSmallIcon />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px' }}>
+
+          {/* Error */}
+          {error && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              padding: '10px 12px', borderRadius: 8, marginBottom: 16,
+              background: C.errorBg, border: `1.5px solid ${C.errorBorder}`,
+            }}>
+              <span style={{ color: C.error, flexShrink: 0, marginTop: 1 }}><ErrorIcon /></span>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: C.error }}>{error}</p>
+            </div>
+          )}
+
+          {/* Ministry Filter */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Pilih Pelayanan
+            </label>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8,
+              padding: '12px', borderRadius: 8, border: `1px solid ${C.border}`,
+              background: '#f8fafc',
+            }}>
+              {/* Semua checkbox */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: C.text }}>
+                <input
+                  type="checkbox"
+                  checked={selectedMinistries.size === ministries.length}
+                  onChange={e => handleSelectAll(e.target.checked)}
+                  style={{ cursor: 'pointer', width: 16, height: 16 }}
+                />
+                Semua
+              </label>
+              {/* Individual ministry checkboxes */}
+              {ministries.map(m => (
+                <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: C.sub }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedMinistries.has(m)}
+                    onChange={() => handleMinistryToggle(m)}
+                    style={{ cursor: 'pointer', width: 16, height: 16 }}
+                  />
+                  {m}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Date range */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Dari Tanggal
+              </label>
+              <input
+                type="date"
+                value={from}
+                max={to}
+                onChange={e => setFrom(e.target.value)}
+                style={inputStyle}
+                onFocus={e => (e.target.style.borderColor = C.primary)}
+                onBlur={e => (e.target.style.borderColor = C.border)}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Sampai Tanggal
+              </label>
+              <input
+                type="date"
+                value={to}
+                min={from}
+                onChange={e => setTo(e.target.value)}
+                style={inputStyle}
+                onFocus={e => (e.target.style.borderColor = C.primary)}
+                onBlur={e => (e.target.style.borderColor = C.border)}
+              />
+            </div>
+          </div>
+
+          {/* Preview info */}
+          <div style={{
+            padding: '11px 14px', borderRadius: 8, marginBottom: 20,
+            background: previewCount > 0 ? C.successBg : '#f8fafc',
+            border: `1.5px solid ${previewCount > 0 ? C.successBorder : C.border}`,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ color: previewCount > 0 ? C.success : C.muted, flexShrink: 0 }}>
+              <InfoIcon />
+            </span>
+            <p style={{ margin: 0, fontSize: 13, color: previewCount > 0 ? C.success : C.muted, fontWeight: 600 }}>
+              {previewCount > 0
+                ? `${previewCount} tanggal dengan data ditemukan dalam rentang ini`
+                : 'Tidak ada data dalam rentang tanggal ini'}
+            </p>
+          </div>
+
+          {/* CSV structure preview */}
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Struktur File
+            </p>
+            <div style={{
+              borderRadius: 8, border: `1px solid ${C.border}`,
+              overflow: 'hidden', fontSize: 11, fontFamily: 'monospace',
+            }}>
+              {/* Header row */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `100px repeat(${Math.min(ministries.length, 3)}, 1fr) 80px`,
+                background: '#f8fafc', borderBottom: `1px solid ${C.border}`,
+              }}>
+                {['Tanggal', ...ministries.slice(0, 3), 'Total'].map((h, i) => (
+                  <div key={i} style={{ padding: '6px 8px', fontWeight: 700, color: C.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {i === 3 && ministries.length > 3 ? `+${ministries.length - 2} lagi…` : h}
+                  </div>
+                ))}
+              </div>
+              {/* Sample row */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `100px repeat(${Math.min(ministries.length, 3)}, 1fr) 80px`,
+                borderBottom: `1px solid ${C.border}`,
+              }}>
+                {['dd/mm/yyyy', ...ministries.slice(0, 3).map(() => 'Rp …'), 'Rp …'].map((v, i) => (
+                  <div key={i} style={{ padding: '5px 8px', color: C.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {i === 3 && ministries.length > 3 ? '…' : v}
+                  </div>
+                ))}
+              </div>
+              {/* Total row */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `100px repeat(${Math.min(ministries.length, 3)}, 1fr) 80px`,
+                background: '#f8fafc',
+              }}>
+                {['TOTAL', ...ministries.slice(0, 3).map(() => 'Rp …'), 'Rp …'].map((v, i) => (
+                  <div key={i} style={{ padding: '5px 8px', fontWeight: 700, color: C.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {i === 3 && ministries.length > 3 ? '…' : v}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, padding: '11px 0', borderRadius: 9, cursor: 'pointer',
+                background: '#f1f5f9', border: `1.5px solid ${C.border}`,
+                fontSize: 14, fontWeight: 700, color: C.sub, fontFamily: 'inherit',
+              }}
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || previewCount === 0}
+              style={{
+                flex: 2, padding: '11px 0', borderRadius: 9,
+                cursor: exporting || previewCount === 0 ? 'not-allowed' : 'pointer',
+                background: exporting || previewCount === 0 ? C.muted : C.primary,
+                border: 'none',
+                fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                transition: 'background 0.15s',
+              }}
+            >
+              {exporting ? (
+                <>
+                  <SpinnerIcon />
+                  Mengekspor...
+                </>
+              ) : (
+                <>
+                  <DownloadIcon />
+                  Unduh Excel
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -255,8 +647,8 @@ export default function AdminHomePage() {
   const [loading, setLoading] = useState(true);
   const [userSearch, setUserSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
-  // ── Stat card filters ──
   const [offeringService, setOfferingService]   = useState('all');
   const [attendanceService, setAttendanceService] = useState('all');
 
@@ -269,15 +661,11 @@ export default function AdminHomePage() {
   const [offeringTo, setOfferingTo]         = useState(toDateStr(new Date()));
   const [attendanceFrom, setAttendanceFrom] = useState(toDateStr(thisMonthStart()));
   const [attendanceTo, setAttendanceTo]     = useState(toDateStr(new Date()));
-
-  // ── Chart filter ──
   const [chartService, setChartService] = useState('all');
 
-  // ── Load data ──
   useEffect(() => {
     const load = async () => {
       try {
-        // service_events — fetch all, sort client-side (no index needed)
         const seSnap = await getDocs(collection(db, 'service_events'));
         const se: ServiceEvent[] = seSnap.docs.map(d => {
           const data = d.data();
@@ -295,8 +683,6 @@ export default function AdminHomePage() {
         }).sort((a, b) => b.date.getTime() - a.date.getTime());
         setServiceEvents(se);
 
-        // registration events — fetch with only a single where(), no orderBy
-        // (combining where() on one field + orderBy() on another = composite index required)
         const evSnap = await getDocs(
           query(collection(db, 'events'), where('type', '==', 'registration'))
         );
@@ -318,8 +704,6 @@ export default function AdminHomePage() {
         }).sort((a, b) => a.date.getTime() - b.date.getTime());
         setRegEvents(re);
 
-        // users — no orderBy (fails if any doc is missing the 'name' field)
-        // use onSnapshot so the list stays live (new registrations appear instantly)
         const usSnap = await getDocs(collection(db, 'users'));
         const us: UserAccount[] = usSnap.docs.map(d => {
           const data = d.data();
@@ -342,26 +726,20 @@ export default function AdminHomePage() {
     load();
   }, []);
 
-  // ── Derived: unique ministry names ──
   const ministries = useMemo(() => {
     const set = new Set(serviceEvents.map(e => e.ministry));
     return Array.from(set).sort();
   }, [serviceEvents]);
 
   const serviceOptions = [{ value: 'all', label: 'Semua' }, ...ministries.map(m => ({ value: m, label: m }))];
-
-  // ── Helpers ──
   const finishedEvents = useMemo(() => serviceEvents.filter(e => e.is_finished), [serviceEvents]);
 
   function lastFinishedByService(ministry: string): ServiceEvent | undefined {
     const pool = ministry === 'all' ? finishedEvents : finishedEvents.filter(e => e.ministry === ministry);
-    return pool[0]; // already sorted desc
+    return pool[0];
   }
 
-  function sumInRange(
-    field: 'offering_amount' | 'attendance_count',
-    from: string, to: string,
-  ): number {
+  function sumInRange(field: 'offering_amount' | 'attendance_count', from: string, to: string): number {
     const f = new Date(from); f.setHours(0,0,0,0);
     const t = new Date(to);   t.setHours(23,59,59,999);
     return finishedEvents
@@ -369,10 +747,8 @@ export default function AdminHomePage() {
       .reduce((acc, e) => acc + (e[field] ?? 0), 0);
   }
 
-  // ── Stat card values ──
   const lastOffering = useMemo(() => {
     if (offeringService === 'all') {
-      // sum of the most recent offering from each ministry
       const byMinistry: Record<string, number> = {};
       for (const e of finishedEvents) {
         if (!(e.ministry in byMinistry) && e.offering_amount !== undefined) {
@@ -385,8 +761,8 @@ export default function AdminHomePage() {
     return lastFinishedByService(offeringService)?.offering_amount;
   }, [offeringService, finishedEvents]);
 
-  const totalOffering   = useMemo(() => sumInRange('offering_amount',   offeringFrom,   offeringTo),   [offeringFrom, offeringTo, finishedEvents]);
-  const totalAttendance = useMemo(() => sumInRange('attendance_count',  attendanceFrom, attendanceTo), [attendanceFrom, attendanceTo, finishedEvents]);
+  const totalOffering   = useMemo(() => sumInRange('offering_amount',  offeringFrom,   offeringTo),   [offeringFrom, offeringTo, finishedEvents]);
+  const totalAttendance = useMemo(() => sumInRange('attendance_count', attendanceFrom, attendanceTo), [attendanceFrom, attendanceTo, finishedEvents]);
 
   const lastAttendance = useMemo(() => {
     if (attendanceService === 'all') {
@@ -402,19 +778,16 @@ export default function AdminHomePage() {
     return lastFinishedByService(attendanceService)?.attendance_count;
   }, [attendanceService, finishedEvents]);
 
-  // ── Chart data ──
   const chartData = useMemo(() => {
     const pool = chartService === 'all'
       ? finishedEvents
       : finishedEvents.filter(e => e.ministry === chartService);
-    // group by date string, sum attendance
     const map: Record<string, number> = {};
     for (const e of pool) {
       if (e.attendance_count === undefined) continue;
       const key = e.date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
       map[key] = (map[key] ?? 0) + e.attendance_count;
     }
-    // sort by actual date
     const sorted = [...pool]
       .filter(e => e.attendance_count !== undefined)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -430,45 +803,31 @@ export default function AdminHomePage() {
     return result;
   }, [chartService, finishedEvents]);
 
-  // ── Upcoming events ──
   const upcomingEvents = useMemo(() => {
     const now = new Date();
-    const upcoming = [
-      // Kebaktian: show if not finished (even if date passed, matching mobile logic)
+    return [
       ...serviceEvents
         .filter(e => !e.is_finished)
         .map(e => ({
-          id: e.id,
-          title: e.ministry,
-          date: e.date,
-          type: 'kebaktian' as const,
-          subtitle: e.description ?? '',
-          badge: null as string | null,
-          isFull: false,
+          id: e.id, title: e.ministry, date: e.date,
+          type: 'kebaktian' as const, subtitle: e.description ?? '',
+          badge: null as string | null, isFull: false,
         })),
-      // Registration: show if date hasn't passed
       ...regEvents
         .filter(e => !e.is_finished && e.date > now)
         .map(e => ({
-          id: e.id,
-          title: e.title,
-          date: e.date,
-          type: 'registrasi' as const,
-          subtitle: e.description ?? '',
+          id: e.id, title: e.title, date: e.date,
+          type: 'registrasi' as const, subtitle: e.description ?? '',
           badge: `${e.currentRegistrants}/${e.capacity}`,
           isFull: e.currentRegistrants >= e.capacity,
         })),
     ].sort((a, b) => a.date.getTime() - b.date.getTime());
-    return upcoming;
   }, [serviceEvents, regEvents]);
 
-  // ── User management ──
   const filteredUsers = useMemo(() => {
     if (!userSearch) return users;
     const q = userSearch.toLowerCase();
-    return users.filter(u =>
-      u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-    );
+    return users.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
   }, [users, userSearch]);
 
   const handleDeleteUser = async (userId: string, userName: string) => {
@@ -485,13 +844,9 @@ export default function AdminHomePage() {
     }
   };
 
-  // ── Format helpers ──
-  const fmtCurrency = (v?: number) =>
-    v === undefined ? '—' : `Rp ${v.toLocaleString('id-ID')}`;
-  const fmtNumber = (v?: number) =>
-    v === undefined ? '—' : v.toLocaleString('id-ID');
-  const fmtDate = (d: Date) =>
-    d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fmtCurrency = (v?: number) => v === undefined ? '—' : `Rp ${v.toLocaleString('id-ID')}`;
+  const fmtNumber = (v?: number) => v === undefined ? '—' : v.toLocaleString('id-ID');
+  const fmtDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '40vh', color: C.muted, fontFamily: 'Nunito, sans-serif' }}>
@@ -499,68 +854,80 @@ export default function AdminHomePage() {
     </div>
   );
 
-  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
 
-      {/* ══ SECTION 1: STAT CARDS ══════════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
+      {/* Export Modal */}
+      {showExportModal && (
+        <ExportOfferingModal
+          onClose={() => setShowExportModal(false)}
+          finishedEvents={finishedEvents}
+          ministries={ministries}
+        />
+      )}
 
-        {/* Card 1 — Last offering */}
+      {/* ══ SECTION 1: STAT CARDS ══════════════════════════════════════════ */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div /> {/* spacer */}
+        {/* Export button */}
+        <button
+          onClick={() => setShowExportModal(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '8px 16px', borderRadius: 9, cursor: 'pointer',
+            background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
+            fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: 'inherit',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = C.primary;
+            e.currentTarget.style.color = '#fff';
+            e.currentTarget.style.borderColor = C.primary;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = C.primaryBg;
+            e.currentTarget.style.color = C.primary;
+            e.currentTarget.style.borderColor = C.primaryBorder;
+          }}
+        >
+          <DownloadIcon />
+          Ekspor Persembahan
+        </button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
         <StatCard
           label="Persembahan Terakhir"
           value={fmtCurrency(lastOffering)}
           valueColor={C.primary}
-          filter={
-            <SelectPill value={offeringService} options={serviceOptions} onChange={setOfferingService} />
-          }
+          filter={<SelectPill value={offeringService} options={serviceOptions} onChange={setOfferingService} />}
           sub={offeringService === 'all' ? 'Gabungan semua kebaktian' : `Kebaktian: ${offeringService}`}
         />
-
-        {/* Card 2 — Total offering this period */}
         <StatCard
           label="Total Persembahan"
           value={fmtCurrency(totalOffering)}
           valueColor={C.primary}
-          filter={
-            <DateRangePicker
-              from={offeringFrom} to={offeringTo}
-              onFromChange={setOfferingFrom} onToChange={setOfferingTo}
-            />
-          }
+          filter={<DateRangePicker from={offeringFrom} to={offeringTo} onFromChange={setOfferingFrom} onToChange={setOfferingTo} />}
           sub="Dalam rentang tanggal terpilih"
         />
-
-        {/* Card 3 — Last attendance */}
         <StatCard
           label="Kehadiran Terakhir"
           value={fmtNumber(lastAttendance) + (lastAttendance !== undefined ? ' orang' : '')}
           valueColor={C.primary}
-          filter={
-            <SelectPill value={attendanceService} options={serviceOptions} onChange={setAttendanceService} />
-          }
+          filter={<SelectPill value={attendanceService} options={serviceOptions} onChange={setAttendanceService} />}
           sub={attendanceService === 'all' ? 'Gabungan semua kebaktian' : `Kebaktian: ${attendanceService}`}
         />
-
-        {/* Card 4 — Total attendance this period */}
         <StatCard
           label="Total Kehadiran"
           value={fmtNumber(totalAttendance) + (totalAttendance > 0 ? ' orang' : '')}
           valueColor={C.primary}
-          filter={
-            <DateRangePicker
-              from={attendanceFrom} to={attendanceTo}
-              onFromChange={setAttendanceFrom} onToChange={setAttendanceTo}
-            />
-          }
+          filter={<DateRangePicker from={attendanceFrom} to={attendanceTo} onFromChange={setAttendanceFrom} onToChange={setAttendanceTo} />}
           sub="Dalam rentang tanggal terpilih"
         />
       </div>
 
-      {/* ══ SECTION 2: CHART + UPCOMING EVENTS ════════════════════════════ */}
+      {/* ══ SECTION 2: CHART + UPCOMING ═══════════════════════════════════ */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 16, marginBottom: 32 }}>
-
-        {/* Line chart */}
         <Card style={{ padding: '20px 20px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
@@ -574,21 +941,13 @@ export default function AdminHomePage() {
           </div>
         </Card>
 
-        {/* Upcoming events */}
-        <Card style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 320  }}>
-          {/* Panel header with create button */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '16px 16px 12px', borderBottom: `1px solid ${C.border}`,
-          }}>
+        <Card style={{ padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 12px', borderBottom: `1px solid ${C.border}` }}>
             <div>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: C.text }}>Event Mendatang</p>
               <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>{upcomingEvents.length} event</p>
             </div>
-            {/* Create dropdown */}
           </div>
-
-          {/* Event list */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 12px' }}>
             {upcomingEvents.length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: C.muted, fontSize: 13 }}>
@@ -603,20 +962,9 @@ export default function AdminHomePage() {
                   const typeBorder = isReg ? C.successBorder : C.primaryBorder;
                   const isPast = ev.date < new Date();
                   return (
-                    <div key={ev.id} style={{
-                      padding: '10px 12px',
-                      borderRadius: 9,
-                      border: `1.5px solid ${isPast ? C.warnBorder : typeBorder}`,
-                      background: isPast ? C.warnBg : '#fafbfc',
-                    }}>
+                    <div key={ev.id} style={{ padding: '10px 12px', borderRadius: 9, border: `1.5px solid ${isPast ? C.warnBorder : typeBorder}`, background: isPast ? C.warnBg : '#fafbfc' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                        {/* Date badge */}
-                        <div style={{
-                          flexShrink: 0, width: 36, textAlign: 'center',
-                          background: isPast ? '#fff' : typeBg,
-                          borderRadius: 7, padding: '3px 4px',
-                          border: `1px solid ${isPast ? C.warnBorder : typeBorder}`,
-                        }}>
+                        <div style={{ flexShrink: 0, width: 36, textAlign: 'center', background: isPast ? '#fff' : typeBg, borderRadius: 7, padding: '3px 4px', border: `1px solid ${isPast ? C.warnBorder : typeBorder}` }}>
                           <p style={{ margin: 0, fontSize: 9, fontWeight: 700, color: isPast ? C.warn : typeColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                             {ev.date.toLocaleDateString('id-ID', { month: 'short' })}
                           </p>
@@ -624,16 +972,9 @@ export default function AdminHomePage() {
                             {ev.date.getDate()}
                           </p>
                         </div>
-
-                        {/* Title + sub */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                            <span style={{
-                              fontSize: 9, fontWeight: 800, letterSpacing: '0.4px',
-                              color: typeColor, background: typeBg,
-                              border: `1px solid ${typeBorder}`,
-                              borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', flexShrink: 0,
-                            }}>
+                            <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.4px', color: typeColor, background: typeBg, border: `1px solid ${typeBorder}`, borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', flexShrink: 0 }}>
                               {isReg ? 'REGISTRASI' : 'IBADAH'}
                             </span>
                             {isPast && (
@@ -642,27 +983,17 @@ export default function AdminHomePage() {
                               </span>
                             )}
                           </div>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text,
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {ev.title}
                           </p>
                           {ev.subtitle && (
-                            <p style={{ margin: '1px 0 0', fontSize: 10, color: C.muted,
-                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <p style={{ margin: '1px 0 0', fontSize: 10, color: C.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {ev.subtitle}
                             </p>
                           )}
                         </div>
-
-                        {/* Badge: registrant count or nothing */}
                         {ev.badge && (
-                          <span style={{
-                            flexShrink: 0, fontSize: 10, fontWeight: 700,
-                            color: ev.isFull ? C.error : C.success,
-                            background: ev.isFull ? C.errorBg : C.successBg,
-                            border: `1px solid ${ev.isFull ? C.errorBorder : C.successBorder}`,
-                            borderRadius: 5, padding: '2px 6px',
-                          }}>
+                          <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: ev.isFull ? C.error : C.success, background: ev.isFull ? C.errorBg : C.successBg, border: `1px solid ${ev.isFull ? C.errorBorder : C.successBorder}`, borderRadius: 5, padding: '2px 6px' }}>
                             {ev.badge}
                           </span>
                         )}
@@ -676,10 +1007,8 @@ export default function AdminHomePage() {
         </Card>
       </div>
 
-      {/* ══ SECTION 3: USER ACCOUNTS ═══════════════════════════════════════ */}
+      {/* ══ SECTION 3: USERS ══════════════════════════════════════════════ */}
       <SectionHeading>Daftar Akun</SectionHeading>
-
-      {/* Search bar */}
       <div style={{ position: 'relative', marginBottom: 16, maxWidth: 400 }}>
         <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.muted, pointerEvents: 'none' }}>
           <SearchIcon />
@@ -689,22 +1018,12 @@ export default function AdminHomePage() {
           placeholder="Cari nama atau email..."
           value={userSearch}
           onChange={e => setUserSearch(e.target.value)}
-          style={{
-            width: '100%', padding: '10px 14px 10px 38px',
-            border: `1.5px solid ${C.border}`, borderRadius: 8,
-            fontSize: 14, color: C.text, background: C.card,
-            outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
-            transition: 'border-color 0.2s',
-          }}
+          style={{ width: '100%', padding: '10px 14px 10px 38px', border: `1.5px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.text, background: C.card, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
           onFocus={e => (e.target.style.borderColor = C.primary)}
           onBlur={e => (e.target.style.borderColor = C.border)}
         />
         {userSearch && (
-          <button onClick={() => setUserSearch('')} style={{
-            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', cursor: 'pointer', color: C.muted,
-            display: 'flex', alignItems: 'center', padding: 2,
-          }}>
+          <button onClick={() => setUserSearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center', padding: 2 }}>
             <XSmallIcon />
           </button>
         )}
@@ -714,104 +1033,43 @@ export default function AdminHomePage() {
         {filteredUsers.length} dari {users.length} akun
       </p>
 
-      {/* Users table */}
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        {/* Header row */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '2fr 2.5fr 1fr 1fr auto',
-          gap: 0, padding: '10px 20px', background: '#f8fafc',
-          borderBottom: `1px solid ${C.border}`,
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 2.5fr 1fr 1fr auto', gap: 0, padding: '10px 20px', background: '#f8fafc', borderBottom: `1px solid ${C.border}` }}>
           {['Nama', 'Email', 'Role', 'Bergabung', ''].map(h => (
-            <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-              {h}
-            </span>
+            <span key={h} style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{h}</span>
           ))}
         </div>
-
         {filteredUsers.length === 0 ? (
-          <div style={{ padding: '32px 20px', textAlign: 'center', color: C.muted, fontSize: 14 }}>
-            Tidak ada akun yang cocok.
-          </div>
+          <div style={{ padding: '32px 20px', textAlign: 'center', color: C.muted, fontSize: 14 }}>Tidak ada akun yang cocok.</div>
         ) : (
           filteredUsers.map((user, i) => (
             <div
               key={user.id}
-              style={{
-                display: 'grid', gridTemplateColumns: '2fr 2.5fr 1fr 1fr auto',
-                gap: 0, padding: '14px 20px', alignItems: 'center',
-                borderBottom: i < filteredUsers.length - 1 ? `1px solid ${C.border}` : 'none',
-                transition: 'background 0.12s',
-              }}
+              style={{ display: 'grid', gridTemplateColumns: '2fr 2.5fr 1fr 1fr auto', gap: 0, padding: '14px 20px', alignItems: 'center', borderBottom: i < filteredUsers.length - 1 ? `1px solid ${C.border}` : 'none', transition: 'background 0.12s' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#fafbfc')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              {/* Avatar + name */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                  background: C.primaryBg, color: C.primary,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 800,
-                }}>
+                <div style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, background: C.primaryBg, color: C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>
                   {user.name[0]?.toUpperCase() ?? 'U'}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {user.name}
-                  </p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</p>
                   {user.ministries && user.ministries.length > 0 && (
-                    <p style={{ margin: 0, fontSize: 11, color: C.muted }}>
-                      {user.ministries.join(', ')}
-                    </p>
+                    <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{user.ministries.join(', ')}</p>
                   )}
                 </div>
               </div>
-
-              {/* Email */}
-              <p style={{ margin: 0, fontSize: 13, color: C.sub,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user.email}
-              </p>
-
-              {/* Role */}
+              <p style={{ margin: 0, fontSize: 13, color: C.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</p>
               <div><RoleTag role={user.role} /></div>
-
-              {/* Joined */}
-              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
-                {user.createdAt ? fmtDate(user.createdAt) : '—'}
-              </p>
-
-              {/* Delete */}
+              <p style={{ margin: 0, fontSize: 12, color: C.muted }}>{user.createdAt ? fmtDate(user.createdAt) : '—'}</p>
               <button
                 onClick={() => handleDeleteUser(user.id, user.name)}
                 disabled={deletingId === user.id || user.role === 'admin'}
                 title={user.role === 'admin' ? 'Admin tidak bisa dihapus dari sini' : 'Hapus akun'}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 30, height: 30, borderRadius: 7,
-                  background: user.role === 'admin' ? '#f1f5f9' : '#fff5f5',
-                  border: `1.5px solid ${user.role === 'admin' ? C.border : '#fecaca'}`,
-                  color: user.role === 'admin' ? C.muted : C.error,
-                  cursor: user.role === 'admin' || deletingId === user.id ? 'not-allowed' : 'pointer',
-                  opacity: deletingId === user.id ? 0.5 : 1,
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => {
-                  if (user.role !== 'admin' && deletingId !== user.id) {
-                    e.currentTarget.style.background = C.error;
-                    e.currentTarget.style.color = '#fff';
-                    e.currentTarget.style.borderColor = C.error;
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (user.role !== 'admin') {
-                    e.currentTarget.style.background = '#fff5f5';
-                    e.currentTarget.style.color = C.error;
-                    e.currentTarget.style.borderColor = '#fecaca';
-                  }
-                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 7, background: user.role === 'admin' ? '#f1f5f9' : '#fff5f5', border: `1.5px solid ${user.role === 'admin' ? C.border : '#fecaca'}`, color: user.role === 'admin' ? C.muted : C.error, cursor: user.role === 'admin' || deletingId === user.id ? 'not-allowed' : 'pointer', opacity: deletingId === user.id ? 0.5 : 1, transition: 'all 0.15s' }}
+                onMouseEnter={e => { if (user.role !== 'admin' && deletingId !== user.id) { e.currentTarget.style.background = C.error; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = C.error; } }}
+                onMouseLeave={e => { if (user.role !== 'admin') { e.currentTarget.style.background = '#fff5f5'; e.currentTarget.style.color = C.error; e.currentTarget.style.borderColor = '#fecaca'; } }}
               >
                 <TrashSmallIcon />
               </button>
@@ -826,33 +1084,22 @@ export default function AdminHomePage() {
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 
-function StatCard({
-    label, value, valueColor, filter, sub,
-}: {
-  label: string;
-  value: string;
-  valueColor: string;
-  filter: React.ReactNode;
-  sub: string;
+function StatCard({ label, value, valueColor, filter, sub }: {
+  label: string; value: string; valueColor: string; filter: React.ReactNode; sub: string;
 }) {
   return (
-    <div style={{
-      background: '#fff', borderRadius: 12, border: `1.5px solid ${C.border}`,
-      boxShadow: '0 2px 12px rgba(0,0,0,0.04)', padding: '18px 20px',
-    }}>
+    <div style={{ background: '#fff', borderRadius: 12, border: `1.5px solid ${C.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.04)', padding: '18px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: C.sub }}>{label}</p>
         {filter}
       </div>
-      <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: valueColor, lineHeight: 1.1 }}>
-        {value}
-      </p>
+      <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: valueColor, lineHeight: 1.1 }}>{value}</p>
       <p style={{ margin: '6px 0 0', fontSize: 11, color: C.muted }}>{sub}</p>
     </div>
   );
 }
 
-// ─── Tiny inline icons ────────────────────────────────────────────────────────
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
 function SearchIcon() {
   return (
@@ -870,45 +1117,46 @@ function XSmallIcon() {
   );
 }
 
-function PlusIconSmall() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-  );
-}
-
-function CreateMenuOption({
-  label, sub, href, onClick,
-}: {
-  label: string; sub: string; href: string; onClick: () => void;
-}) {
-  return (
-    <a
-      href={href}
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '10px 14px', textDecoration: 'none',
-        borderTop: `1px solid ${C.border}`, cursor: 'pointer',
-        transition: 'background 0.12s',
-      }}
-      onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-    >
-      <div>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{label}</p>
-        <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{sub}</p>
-      </div>
-    </a>
-  );
-}
-
 function TrashSmallIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
       <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  );
+}
+
+function ErrorIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" style={{ animation: 'spin 0.8s linear infinite', transformOrigin: 'center' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </svg>
   );
 }
