@@ -8,6 +8,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, Timestamp, FieldValue,
   writeBatch, increment,
 } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -163,6 +164,9 @@ const PeopleIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="n
 const PlusIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const ChartIcon = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
 const DocIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>;
+const DownloadIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const CheckIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+const ClockIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
 
 // ─── Registrant detail popup ──────────────────────────────────────────────────
 
@@ -233,17 +237,186 @@ function RegistrantDetailModal({ registrant, onClose, fmtDate }: {
   );
 }
 
+// ─── Export Registrants Modal ─────────────────────────────────────────────────
+
+function ExportRegistrantsModal({
+  onClose,
+  registrants,
+  eventTitle,
+}: {
+  onClose: () => void;
+  registrants: Registrant[];
+  eventTitle: string;
+}) {
+  const [exporting, setExporting] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) onClose();
+  };
+
+  const handleExport = () => {
+    try {
+      setExporting(true);
+
+      // Build worksheet data
+      const header = ['Nama', 'Kontak', 'Tanggal Pendaftaran', 'Keterangan'];
+      const rows = registrants.map(r => [
+        r.name,
+        r.contact,
+        r.registeredAt
+          ? r.registeredAt.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' })
+          : '-',
+        r.description || '-',
+      ]);
+
+      const wsData = [header, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Column widths
+      ws['!cols'] = [
+        { wch: 25 }, // Nama
+        { wch: 20 }, // Kontak
+        { wch: 18 }, // Tanggal Pendaftaran
+        { wch: 30 }, // Keterangan
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Registran');
+
+      // Filename
+      const now = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const filename = `registran_${eventTitle.replace(/\s+/g, '_')}_${now}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      onClose();
+    } catch (e) {
+      console.error('Export error:', e);
+      alert('Gagal mengekspor data registran');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const C = {
+    text: '#1e293b', muted: '#64748b', sub: '#475569',
+    primary: '#3b5bdb', primaryBg: '#dbeafe', primaryBorder: '#93c5fd',
+    border: '#cbd5e1', card: '#ffffff',
+  };
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999,
+      }}
+    >
+      <div style={{
+        background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
+        maxWidth: 500, width: '90%', maxHeight: '90vh', overflow: 'auto',
+        boxShadow: '0 20px 25px rgba(0,0,0,0.1)',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '20px 24px 16px',
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 9,
+            background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: C.primary, flexShrink: 0,
+          }}>
+            <DownloadIcon />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>Ekspor Registran</p>
+            <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Unduh daftar pendaftar sebagai file Excel</p>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{
+            padding: '12px', borderRadius: 8, background: '#f0fdf4',
+            border: '1px solid #bbf7d0', marginBottom: 16,
+          }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 600 }}>
+              ✓ Siap mengekspor {registrants.length} registran
+            </p>
+          </div>
+
+          {/* <div style={{ marginBottom: 16 }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Kolom yang akan diekspor
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: C.sub }}>
+              <li>Nama registran</li>
+              <li>Kontak (nomor telepon/email)</li>
+              <li>Tanggal pendaftaran</li>
+              <li>Keterangan tambahan</li>
+            </ul>
+          </div> */}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, padding: '11px 0', borderRadius: 9, cursor: 'pointer',
+                background: '#f1f5f9', border: `1.5px solid ${C.border}`,
+                fontSize: 14, fontWeight: 700, color: C.sub, fontFamily: 'inherit',
+              }}
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || registrants.length === 0}
+              style={{
+                flex: 2, padding: '11px 0', borderRadius: 9,
+                cursor: exporting || registrants.length === 0 ? 'not-allowed' : 'pointer',
+                background: exporting || registrants.length === 0 ? C.muted : C.primary,
+                border: 'none',
+                fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                transition: 'background 0.15s',
+              }}
+            >
+              {exporting ? (
+                <>
+                  Mengekspor...
+                </>
+              ) : (
+                <>
+                  <DownloadIcon />
+                  Unduh Excel
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Inline registrants panel ─────────────────────────────────────────────────
 // Lives inside the expanded EventCard for registration events.
 // Fetches registrants via onSnapshot only when the card is expanded.
 
-function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
-  eventId: string; capacity: number; fmtDate: (d: Date) => string;
+function RegistrantsInlinePanel({ eventId, capacity, fmtDate, eventTitle }: {
+  eventId: string; capacity: number; fmtDate: (d: Date) => string; eventTitle: string;
 }) {
   const [registrants, setRegistrants] = useState<Registrant[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [detailRegistrant, setDetailRegistrant] = useState<Registrant | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -284,7 +457,7 @@ function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
 
   return (
     <>
-      {/* Section label + count pill */}
+      {/* Section label + count pill + export button */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <p style={{ margin: 0, fontSize: 11, fontWeight: 800, color: C.sub,
           textTransform: 'uppercase', letterSpacing: '0.07em' }}>
@@ -298,6 +471,25 @@ function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
             borderRadius: 10, padding: '1px 8px' }}>
             {registrants.length}/{capacity}
           </span>
+        )}
+        {!loading && registrants.length > 0 && (
+          <button
+            onClick={() => setShowExportModal(true)}
+            style={{
+              marginLeft: 'auto',
+              padding: '4px 10px', borderRadius: 6,
+              background: C.primaryBg, border: `1px solid ${C.primaryBorder}`,
+              color: C.primary, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700,
+              display: 'flex', alignItems: 'center', gap: 4,
+              transition: 'background 0.12s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#fbbf24')}
+            onMouseLeave={e => (e.currentTarget.style.background = C.primaryBg)}
+          >
+            <DownloadIcon />
+            Ekspor
+          </button>
         )}
       </div>
 
@@ -395,6 +587,15 @@ function RegistrantsInlinePanel({ eventId, capacity, fmtDate }: {
           registrant={detailRegistrant}
           fmtDate={fmtDate}
           onClose={() => setDetailRegistrant(null)}
+        />
+      )}
+
+      {/* Export modal */}
+      {showExportModal && (
+        <ExportRegistrantsModal
+          registrants={registrants}
+          eventTitle={eventTitle}
+          onClose={() => setShowExportModal(false)}
         />
       )}
     </>
@@ -622,6 +823,7 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
   onVolunteers: () => void; onFinishData: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
   const isReg = ev.type === 'registration';
   const isPast = ev.date < new Date();
 
@@ -632,6 +834,30 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
   const statusColor  = isFinished ? C.muted   : (isPast && !isReg ? C.warn      : typeColor);
   const statusBg     = isFinished ? '#f1f5f9' : (isPast && !isReg ? C.warnBg    : typeBg);
   const statusBorder = isFinished ? C.border   : (isPast && !isReg ? C.warnBorder : typeBorder);
+
+  const handleToggleStatus = async () => {
+    const action = ev.is_finished ? 'belum selesai' : 'selesai';
+    const message = ev.is_finished 
+      ? 'Anda yakin mau event nya belum selesai?' 
+      : 'Anda yakin mau event nya selesai?';
+    
+    if (!confirm(message)) return;
+    
+    setTogglingStatus(true);
+    try {
+      const newStatus = !ev.is_finished;
+      if (ev.type === 'registration') {
+        await updateDoc(doc(db, 'events', ev.id), { is_finished: newStatus });
+      } else {
+        await updateDoc(doc(db, 'service_events', ev.id), { is_finished: newStatus });
+      }
+    } catch (err) {
+      console.error('Error toggling event status:', err);
+      alert('Gagal mengubah status event');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
 
   return (
     <div style={{ background: C.card, borderRadius: 12,
@@ -700,6 +926,15 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
               {!isReg && isFinished && (
                 <ActionChip icon={<ChartIcon />} label="Data Ibadah" onClick={onFinishData} />
               )}
+              <ActionChip 
+                icon={ev.is_finished ? <ClockIcon /> : <CheckIcon />} 
+                label={ev.is_finished ? 'Belum Selesai' : 'Tandai Selesai'}
+                color={ev.is_finished ? C.warn : C.success}
+                bg={ev.is_finished ? C.warnBg : C.successBg}
+                border={ev.is_finished ? C.warnBorder : C.successBorder}
+                onClick={handleToggleStatus}
+                disabled={togglingStatus}
+              />
               <ActionChip icon={<TrashIcon />} label="Hapus"
                 color={C.error} bg={C.errorBg} border={C.errorBorder} onClick={onDelete} />
             </div>
@@ -717,6 +952,7 @@ function EventCard({ event: ev, isFinished, fmtDate, onEdit, onDelete,
                   eventId={ev.id}
                   capacity={ev.capacity ?? 0}
                   fmtDate={fmtDate}
+                  eventTitle={ev.title}
                 />
               </>
             ) : (

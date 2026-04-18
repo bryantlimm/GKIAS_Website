@@ -638,6 +638,175 @@ function ExportOfferingModal({
   );
 }
 
+// ─── Export Users Modal ───────────────────────────────────────────────────────
+
+function ExportUsersModal({
+  onClose,
+  users,
+}: {
+  onClose: () => void;
+  users: UserAccount[];
+}) {
+  const [exporting, setExporting] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) onClose();
+  };
+
+  const handleExport = () => {
+    try {
+      setExporting(true);
+
+      // Build worksheet data
+      const header = ['Nama', 'Email', 'Role', 'Pelayanan', 'Tanggal Bergabung'];
+      const rows = users.map(u => [
+        u.name,
+        u.email,
+        u.role.charAt(0).toUpperCase() + u.role.slice(1), // Capitalize role
+        u.ministries && u.ministries.length > 0 ? u.ministries.join(', ') : '-',
+        u.createdAt
+          ? u.createdAt.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' })
+          : '-',
+      ]);
+
+      const wsData = [header, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Column widths
+      ws['!cols'] = [
+        { wch: 25 }, // Nama
+        { wch: 25 }, // Email
+        { wch: 15 }, // Role
+        { wch: 30 }, // Pelayanan
+        { wch: 18 }, // Tanggal Bergabung
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Akun');
+
+      // Filename
+      const now = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const filename = `akun_${now}.xlsx`;
+
+      XLSX.writeFile(wb, filename);
+      onClose();
+    } catch (e) {
+      console.error('Export error:', e);
+      alert('Gagal mengekspor data akun');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const C = {
+    text: '#1e293b', muted: '#64748b', sub: '#475569',
+    primary: '#3b5bdb', primaryBg: '#dbeafe', primaryBorder: '#93c5fd',
+    border: '#cbd5e1', card: '#ffffff',
+  };
+
+  return (
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999,
+      }}
+    >
+      <div style={{
+        background: C.card, borderRadius: 12, border: `1px solid ${C.border}`,
+        maxWidth: 500, width: '90%', maxHeight: '90vh', overflow: 'auto',
+        boxShadow: '0 20px 25px rgba(0,0,0,0.1)',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '20px 24px 16px',
+          borderBottom: `1px solid ${C.border}`,
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 9,
+            background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: C.primary, flexShrink: 0,
+          }}>
+            <DownloadIcon />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: C.text }}>Ekspor Akun</p>
+            <p style={{ margin: 0, fontSize: 12, color: C.muted }}>Unduh daftar akun sebagai file Excel</p>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{
+            padding: '12px', borderRadius: 8, background: '#f0fdf4',
+            border: '1px solid #bbf7d0', marginBottom: 16,
+          }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 600 }}>
+              ✓ Siap mengekspor {users.length} akun
+            </p>
+          </div>
+
+          {/* <div style={{ marginBottom: 16 }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+              Kolom yang akan diekspor
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: C.sub }}>
+              <li>Nama akun</li>
+              <li>Email</li>
+              <li>Role (Admin, Volunteer, Regular)</li>
+              <li>Pelayanan yang ditangani</li>
+              <li>Tanggal bergabung</li>
+            </ul>
+          </div> */}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, padding: '11px 0', borderRadius: 9, cursor: 'pointer',
+                background: '#f1f5f9', border: `1.5px solid ${C.border}`,
+                fontSize: 14, fontWeight: 700, color: C.sub, fontFamily: 'inherit',
+              }}
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || users.length === 0}
+              style={{
+                flex: 2, padding: '11px 0', borderRadius: 9,
+                cursor: exporting || users.length === 0 ? 'not-allowed' : 'pointer',
+                background: exporting || users.length === 0 ? C.muted : C.primary,
+                border: 'none',
+                fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                transition: 'background 0.15s',
+              }}
+            >
+              {exporting ? (
+                <>
+                  Mengekspor...
+                </>
+              ) : (
+                <>
+                  <DownloadIcon />
+                  Unduh Excel
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main AdminHomePage ───────────────────────────────────────────────────────
 
 export default function AdminHomePage() {
@@ -648,6 +817,7 @@ export default function AdminHomePage() {
   const [userSearch, setUserSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showExportUsersModal, setShowExportUsersModal] = useState(false);
 
   const [offeringService, setOfferingService]   = useState('all');
   const [attendanceService, setAttendanceService] = useState('all');
@@ -866,6 +1036,14 @@ export default function AdminHomePage() {
         />
       )}
 
+      {/* Export Users Modal */}
+      {showExportUsersModal && (
+        <ExportUsersModal
+          onClose={() => setShowExportUsersModal(false)}
+          users={filteredUsers}
+        />
+      )}
+
       {/* ══ SECTION 1: STAT CARDS ══════════════════════════════════════════ */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div /> {/* spacer */}
@@ -1008,7 +1186,36 @@ export default function AdminHomePage() {
       </div>
 
       {/* ══ SECTION 3: USERS ══════════════════════════════════════════════ */}
-      <SectionHeading>Daftar Akun</SectionHeading>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <SectionHeading>Daftar Akun</SectionHeading>
+        </div>
+        {filteredUsers.length > 0 && (
+          <button
+            onClick={() => setShowExportUsersModal(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '8px 16px', borderRadius: 9, cursor: 'pointer',
+              background: C.primaryBg, border: `1.5px solid ${C.primaryBorder}`,
+              fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: 'inherit',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = C.primary;
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = C.primary;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = C.primaryBg;
+              e.currentTarget.style.color = C.primary;
+              e.currentTarget.style.borderColor = C.primaryBorder;
+            }}
+          >
+            <DownloadIcon />
+            Ekspor Akun
+          </button>
+        )}
+      </div>
       <div style={{ position: 'relative', marginBottom: 16, maxWidth: 400 }}>
         <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.muted, pointerEvents: 'none' }}>
           <SearchIcon />
