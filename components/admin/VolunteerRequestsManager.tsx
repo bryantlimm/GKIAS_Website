@@ -24,6 +24,14 @@ interface UserAccount {
   ministries: string[];
 }
 
+interface DeletionRequest {
+  id: string;
+  email: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: any;
+}
+
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12"/>
@@ -71,9 +79,10 @@ const getRoleColor = (role: string) => {
 };
 
 export default function VolunteerRequestsManager() {
-  const [tab, setTab] = useState<'requests' | 'users'>('requests');
+  const [tab, setTab] = useState<'requests' | 'users' | 'deletions'>('requests');
   const [requests, setRequests] = useState<VolunteerRequest[]>([]);
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [deletions, setDeletions] = useState<DeletionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,6 +129,26 @@ export default function VolunteerRequestsManager() {
     fetchUsers();
   }, []);
 
+  // Fetch deletion requests
+  useEffect(() => {
+    const q = query(collection(db, 'deletion_requests'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as DeletionRequest[];
+      data.sort((a, b) => {
+        // Sort by status first (pending first), then by date
+        const statusOrder = { pending: 0, approved: 1, rejected: 2 };
+        const statusCompare = (statusOrder[a.status as keyof typeof statusOrder] ?? 3) - (statusOrder[b.status as keyof typeof statusOrder] ?? 3);
+        if (statusCompare !== 0) return statusCompare;
+        return b.createdAt?.toMillis() - a.createdAt?.toMillis();
+      });
+      setDeletions(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Filter users based on search
   const filteredUsers = useMemo(() => {
     if (!searchTerm.trim()) return users;
@@ -164,6 +193,45 @@ export default function VolunteerRequestsManager() {
     }
   };
 
+  const handleApproveDeletion = async (delReq: DeletionRequest) => {
+    if (!confirm(`Setujui penghapusan akun ${delReq.email}? Data akun akan dihapus secara permanen.`)) return;
+    setProcessingId(delReq.id);
+    try {
+      await updateDoc(doc(db, 'deletion_requests', delReq.id), { status: 'approved' });
+    } catch (error) {
+      console.error('Error approving deletion:', error);
+      alert('Gagal menyetujui permintaan penghapusan.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleRejectDeletion = async (delReq: DeletionRequest) => {
+    if (!confirm(`Tolak permintaan penghapusan akun ${delReq.email}?`)) return;
+    setProcessingId(delReq.id);
+    try {
+      await updateDoc(doc(db, 'deletion_requests', delReq.id), { status: 'rejected' });
+    } catch (error) {
+      console.error('Error rejecting deletion:', error);
+      alert('Gagal menolak permintaan penghapusan.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleToggleDeletionDone = async (delReq: DeletionRequest) => {
+    const newStatus = delReq.status === 'pending' ? 'approved' : 'pending';
+    setProcessingId(delReq.id);
+    try {
+      await updateDoc(doc(db, 'deletion_requests', delReq.id), { status: newStatus });
+    } catch (error) {
+      console.error('Error toggling deletion status:', error);
+      alert('Gagal mengubah status permintaan.');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const formatDate = (ts: any) => {
     if (!ts) return '—';
     return ts.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -185,7 +253,7 @@ export default function VolunteerRequestsManager() {
       {/* Tab Toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 4, background: '#ffffff', borderRadius: 10, border: '1.5px solid #e8ecf0', padding: 5, width: 'fit-content' }}>
-          {(['requests', 'users'] as const).map(t => (
+          {(['requests', 'users', 'deletions'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '7px 20px', borderRadius: 7, border: 'none', cursor: 'pointer',
               background: tab === t ? '#3b5bdb' : 'transparent',
@@ -193,11 +261,11 @@ export default function VolunteerRequestsManager() {
               fontSize: 13, fontWeight: tab === t ? 700 : 600, fontFamily: 'inherit',
               transition: 'all 0.15s',
             }}>
-              {t === 'requests' ? 'Volunteer Requests' : 'List Users'}
+              {t === 'requests' ? 'Volunteer Requests' : t === 'users' ? 'List Users' : 'Deletion Requests'}
               <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700,
                 background: tab === t ? 'rgba(255,255,255,0.2)' : '#f8fafc',
                 color: tab === t ? '#fff' : '#94a3b8', borderRadius: 10, padding: '1px 7px' }}>
-                {t === 'requests' ? requests.length : users.length}
+                {t === 'requests' ? requests.length : t === 'users' ? users.length : deletions.length}
               </span>
             </button>
           ))}
@@ -551,6 +619,152 @@ export default function VolunteerRequestsManager() {
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Deletion Requests Tab */}
+      {tab === 'deletions' && (
+        <div>
+          {deletions.length === 0 ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '48px 24px', gap: 12, color: '#94a3b8',
+            }}>
+              <div style={{ width: 48, height: 48, background: '#f1f5f9', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#64748b' }}>Tidak ada permintaan penghapusan</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#94a3b8' }}>Semua permintaan penghapusan akun sudah ditangani</p>
+            </div>
+          ) : (
+            <>
+              {/* Count badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                <span style={{
+                  background: '#fef3c7', color: '#d97706',
+                  fontSize: 12, fontWeight: 700,
+                  padding: '3px 10px', borderRadius: 20,
+                }}>
+                  {deletions.filter(d => d.status === 'pending').length} menunggu
+                </span>
+                <span style={{
+                  background: '#f3f4f6', color: '#6b7280',
+                  fontSize: 12, fontWeight: 700,
+                  padding: '3px 10px', borderRadius: 20,
+                }}>
+                  {deletions.filter(d => d.status !== 'pending').length} selesai
+                </span>
+              </div>
+
+              {/* Cards list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {deletions.map((delReq) => {
+                  const isProcessing = processingId === delReq.id;
+                  const isDone = delReq.status !== 'pending';
+                  const colors = ['#3b5bdb', '#0ea5e9', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+                  const colorIndex = delReq.email.charCodeAt(0) % colors.length;
+                  const avatarColor = colors[colorIndex];
+                  const initials = delReq.email.split('@')[0].substring(0, 2).toUpperCase();
+
+                  return (
+                    <div
+                      key={delReq.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 16,
+                        padding: '16px 18px',
+                        border: `1.5px solid ${isDone ? '#e2e8f0' : '#e8ecf0'}`,
+                        borderRadius: 10,
+                        background: isDone ? '#f8fafc' : '#fff',
+                        transition: 'all 0.15s',
+                        opacity: isDone ? 0.6 : 1,
+                      }}
+                      onMouseEnter={e => { if (!isDone) e.currentTarget.style.borderColor = '#c7d2fe'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = isDone ? '#e2e8f0' : '#e8ecf0'; }}
+                    >
+                      {/* Avatar */}
+                      <div style={{
+                        width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                        background: isDone ? '#e2e8f0' : avatarColor,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: isDone ? '#94a3b8' : '#fff', fontSize: 13, fontWeight: 800,
+                      }}>
+                        {initials}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: isDone ? '#94a3b8' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: isDone ? 'line-through' : 'none' }}>
+                          {delReq.email}
+                        </p>
+                        <p style={{ margin: '4px 0 0', fontSize: 12, color: isDone ? '#cbd5e1' : '#64748b', lineHeight: 1.4, marginRight: 8 }}>
+                          {delReq.reason}
+                        </p>
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: isDone ? '#cbd5e1' : '#94a3b8' }}>
+                          Tanggal permintaan: {formatDate(delReq.createdAt)}
+                        </p>
+                        {isDone && (
+                          <p style={{ margin: '4px 0 0', fontSize: 10, color: '#10b981', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            ✓ Selesai
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Toggle Button */}
+                      <button
+                        onClick={() => handleToggleDeletionDone(delReq)}
+                        disabled={isProcessing}
+                        title={isDone ? "Buka kembali" : "Tandai selesai"}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '7px 14px',
+                          background: isDone ? '#e2e8f0' : '#f0fdf4',
+                          color: isDone ? '#94a3b8' : '#16a34a',
+                          border: '1.5px solid',
+                          borderColor: isDone ? '#cbd5e1' : '#bbf7d0',
+                          borderRadius: 7,
+                          cursor: isProcessing ? 'not-allowed' : 'pointer',
+                          fontSize: 12, fontWeight: 700,
+                          transition: 'all 0.15s',
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => { 
+                          if (!isProcessing) { 
+                            if (isDone) {
+                              e.currentTarget.style.background = '#cbd5e1';
+                              e.currentTarget.style.borderColor = '#94a3b8';
+                            } else {
+                              e.currentTarget.style.background = '#16a34a'; 
+                              e.currentTarget.style.color = '#fff'; 
+                              e.currentTarget.style.borderColor = '#16a34a'; 
+                            }
+                          }
+                        }}
+                        onMouseLeave={e => { 
+                          if (!isProcessing) { 
+                            if (isDone) {
+                              e.currentTarget.style.background = '#e2e8f0';
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                            } else {
+                              e.currentTarget.style.background = '#f0fdf4'; 
+                              e.currentTarget.style.color = '#16a34a'; 
+                              e.currentTarget.style.borderColor = '#bbf7d0'; 
+                            }
+                          }
+                        }}
+                      >
+                        {isDone ? '↻ Buka' : '✓ Selesai'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
