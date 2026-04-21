@@ -14,7 +14,7 @@ import {
 import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-
+import { useRef } from "react";
 const QRScanner = dynamic(() => import("./QRScanner"), { ssr: false });
 
 type AdminTab = "list" | "details";
@@ -73,33 +73,48 @@ useEffect(() => {
   return () => unsubscribe();
 }, []);
   // ── QR Scan handler ────────────────────────────────────────────────────────
-  const handleScan = useCallback(async (qrId: string) => {
-    setShowScanner(false);
-    // QR code encodes the registrationId (tempId pattern: uid_timestamp)
-    // Find registration by matching qrCode data URL or just ID
-    const found = registrations.find(
-      (r) => r.qrCode?.includes(qrId) || r.id === qrId
-    );
-    if (!found) {
-      setScanMsg("Pendaftaran tidak ditemukan.");
-      return;
-    }
-    if (found.status === "registered") {
-      setScanMsg("status belum di approve admin");
-      setScannedReg(found);
-      return;
-    }
-    if (found.status === "approved") {
-      await updateRegistrationStatus(found.id!, "checked_in");
-      setRegistrations((prev) =>
-        prev.map((r) => (r.id === found.id ? { ...r, status: "checked_in" } : r))
-      );
-      setScannedReg({ ...found, status: "checked_in" });
-    }
-    if (found.status === "checked_in") {
-      setScannedReg(found);
-    }
-  }, [registrations]);
+  const handleScanRef = useRef<(qrId: string) => void>(() => {});
+
+const [scanError, setScanError] = useState("");
+const handleScan = useCallback(async (qrId: string) => {
+  setShowScanner(false);
+  setScanMsg("");
+  setScanError("");
+
+  const found = registrations.find((r) => r.id === qrId);
+
+  if (!found) {
+    setScanError("Pendaftaran tidak ditemukan untuk QR ini.");
+    return;
+  }
+  if (found.status === "registered") {
+    setScanMsg("status belum di approve admin");
+    setScannedReg(found);
+    return;
+  }
+  if (found.status === "approved") {
+  await updateRegistrationStatus(found.id!, "checked_in");
+  const updated = { ...found, status: "checked_in" as const };
+  setScannedReg(updated);
+  // Refresh the full list from Firestore
+  const fresh = await getAllRegistrations();
+  setRegistrations(fresh);
+  return;
+}
+  if (found.status === "checked_in") {
+    setScannedReg(found);
+  }
+}, [registrations]);
+
+// Keep the ref always up to date
+useEffect(() => {
+  handleScanRef.current = handleScan;
+}, [handleScan]);
+
+// Stable wrapper that never changes identity — pass THIS to QRScanner
+const stableOnScan = useCallback((qrId: string) => {
+  handleScanRef.current(qrId);
+}, []);
 
   // ── Approve / Check-in ────────────────────────────────────────────────────
   async function handleApprove(id: string) {
@@ -207,8 +222,7 @@ useEffect(() => {
                   const main = reg.members[0];
                   const subs = reg.members.slice(1);
                   return (
-                    <>
-                      <tr key={reg.id} className="border-b hover:bg-gray-50">
+                    <tr key={reg.id} className="border-b hover:bg-gray-50">
                         <td className="px-3 py-3">
                           <div className="font-semibold">{main.namaLengkap}</div>
                           <div className="text-xs text-gray-400">{reg.email}</div>
@@ -281,7 +295,6 @@ useEffect(() => {
                           )}
                         </td>
                       </tr>
-                    </>
                   );
                 })}
               </tbody>
@@ -372,7 +385,7 @@ useEffect(() => {
       {/* ── SCANNER MODAL ── */}
       {showScanner && (
         <QRScanner
-          onScan={handleScan}
+          onScan={stableOnScan}
           onClose={() => setShowScanner(false)}
         />
       )}
@@ -408,6 +421,24 @@ useEffect(() => {
             <button
               onClick={() => { setScannedReg(null); setScanMsg(""); }}
               className="w-full bg-gray-100 text-gray-700 py-2 rounded-xl font-medium hover:bg-gray-200"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SCAN ERROR MODAL ── */}
+      {scanError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 text-center space-y-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-red-600 text-2xl font-bold">!</span>
+            </div>
+            <p className="font-semibold text-red-600">{scanError}</p>
+            <button
+              onClick={() => setScanError("")}
+              className="w-full bg-gray-100 text-gray-700 py-2 rounded-xl font-medium"
             >
               Tutup
             </button>

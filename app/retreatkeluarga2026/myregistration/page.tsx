@@ -1,3 +1,4 @@
+// retreatkeluarga2026/myregistration/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -8,9 +9,11 @@ import {
   signOutUser,
   getRegistrationByUid,
 } from "@/lib/firebase";
-import { auth } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { RetreatRegistration } from "@/lib/retreat-types";
+
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const STATUS_STEPS = ["registered", "approved", "checked_in"] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -24,6 +27,8 @@ export default function MyRegistrationPage() {
   const [user, setUser] = useState<{ uid: string; email: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [registration, setRegistration] = useState<RetreatRegistration | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [loadingReg, setLoadingReg] = useState(false);
 
   // Sign-in state
   const [email, setEmail] = useState("");
@@ -36,17 +41,21 @@ export default function MyRegistrationPage() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
         setUser({ uid: u.uid, email: u.email });
+        setLoadingReg(true); // Start loading data
+        
         const reg = await getRegistrationByUid(u.uid);
         setRegistration(reg);
+        
+        setLoadingReg(false); // Stop loading data
       } else {
         setUser(null);
         setRegistration(null);
       }
-      setLoading(false);
+      setLoadingAuth(false); // Auth check is done
     });
     return unsub;
   }, []);
-
+  
   async function handleSignIn() {
     setSignInError("");
     try {
@@ -69,7 +78,7 @@ export default function MyRegistrationPage() {
     await signOutUser();
   }
 
-  if (loading) return (
+if (loadingAuth || loadingReg) return (
     <div className="min-h-screen flex items-center justify-center">
       <p className="text-gray-400">Memuat...</p>
     </div>

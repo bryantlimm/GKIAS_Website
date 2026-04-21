@@ -1,7 +1,5 @@
-// app/admin/login/page.tsx
 'use client';
-
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -64,41 +62,73 @@ export default function AdminLoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  const checkAdminRole = async (uid: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists() && userDoc.data()?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        setError('Akun Anda tidak memiliki izin akses Admin.');
-        await signOut(auth);
-        setIsSubmitting(false);
-      }
-    } catch (err) {
-      console.error('Admin check failed:', err);
-      setError('Gagal memverifikasi hak akses admin.');
-      await signOut(auth);
-      setIsSubmitting(false);
-    }
-  };
+  // We use this ref to tell the useEffect to ignore state changes if the user 
+  // is currently in the middle of clicking the manual "Masuk" button.
+  const isManualLogin = useRef(false);
 
+  // 1. Handle auto-redirect if an existing user visits this page
   useEffect(() => {
-    if (!loading && user) {
-      checkAdminRole(user.uid);
-    }
+    let isMounted = true;
+
+    const verifyExistingUser = async () => {
+      // Skip if loading, no user, or if we are handling a manual form submission
+      if (loading || !user || isManualLogin.current) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!isMounted) return; // Prevent updating state if component unmounted
+
+        if (userDoc.exists() && userDoc.data()?.role === 'admin') {
+          router.push('/admin');
+        } else {
+          await signOut(auth);
+          if (isMounted) setError('Akun Anda tidak memiliki izin akses Admin.');
+        }
+      } catch (err) {
+        console.error('Admin check failed:', err);
+        if (!isMounted) return;
+        await signOut(auth);
+        setError('Gagal memverifikasi hak akses admin.');
+      }
+    };
+
+    verifyExistingUser();
+
+    // Cleanup function to flag the component as unmounted
+    return () => {
+      isMounted = false;
+    };
   }, [user, loading, router]);
 
+  // 2. Handle manual login form submission
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
+    isManualLogin.current = true; // Block the useEffect from running concurrently
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await checkAdminRole(userCredential.user.uid);
+      const uid = userCredential.user.uid;
+      const userDoc = await getDoc(doc(db, 'users', uid));
+
+      if (userDoc.exists() && userDoc.data()?.role === 'admin') {
+        router.push('/admin');
+        // Note: We don't set isSubmitting(false) here so the button stays in a loading state during redirect
+      } else {
+        await signOut(auth);
+        setError('Akun Anda tidak memiliki izin akses Admin.');
+        setIsSubmitting(false);
+        isManualLogin.current = false;
+      }
     } catch (err) {
       if (typeof err === 'object' && err !== null && 'code' in err) {
         const firebaseError = err as { code: string; message: string };
-        if (firebaseError.code === 'auth/user-not-found' || firebaseError.code === 'auth/wrong-password' || firebaseError.code === 'auth/invalid-credential') {
+        if (
+          firebaseError.code === 'auth/user-not-found' || 
+          firebaseError.code === 'auth/wrong-password' || 
+          firebaseError.code === 'auth/invalid-credential'
+        ) {
           setError('Email atau password salah. Silakan coba lagi.');
         } else {
           setError(`Login gagal: ${firebaseError.message}`);
@@ -107,11 +137,13 @@ export default function AdminLoginPage() {
         setError('Login gagal karena kesalahan tidak terduga.');
       }
       setIsSubmitting(false);
+      isManualLogin.current = false;
     }
   };
 
   // ── Loading / redirect state ──
-  if (loading || user) {
+  // Show spinner if Firebase is loading, OR if there is an existing user and it isn't a manual login
+  if (loading || (user && !isManualLogin.current)) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
