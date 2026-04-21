@@ -19,6 +19,15 @@ const QRScanner = dynamic(() => import("./QRScanner"), { ssr: false });
 
 type AdminTab = "list" | "details";
 
+// colors
+const badgeStyle = {
+  background: "#f1f5f9",
+  borderRadius: 4,
+  padding: "2px 8px",
+  fontSize: 11,
+  color: "#64748b",
+};
+
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const ScanIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -84,6 +93,15 @@ const getStatusLabel = (status: string) => {
     checked_in: "Checked In",
   };
   return map[status] || status;
+};
+
+const getRoomCapacity = (tipeKamar: string): string => {
+  const map: Record<string, string> = {
+    isi2: "2",
+    isi3: "3",
+    isi4: "4",
+  };
+  return map[tipeKamar] || tipeKamar;
 };
 
 const avatarColors = ["#3b5bdb", "#0ea5e9", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981"];
@@ -168,6 +186,13 @@ export default function AdminRetreat() {
   async function handleCheckin(id: string) {
     await updateRegistrationStatus(id, "checked_in");
     setRegistrations((prev) => prev.map((r) => (r.id === id ? { ...r, status: "checked_in" } : r)));
+    // Find the updated registration and show the result popup
+    const updatedReg = registrations.find((r) => r.id === id);
+    if (updatedReg) {
+      const updated = { ...updatedReg, status: "checked_in" as const };
+      setScannedReg(updated);
+      setScanMsg(""); // Clear any previous scan message
+    }
     setConfirmCheckin(null);
   }
 
@@ -332,9 +357,34 @@ export default function AdminRetreat() {
                           {main.namaLengkap}
                         </p>
                         <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {reg.email}
+                          {reg.email} | {main.nomorTelpon}
                         </p>
                       </div>
+
+                      {/* <div> */}
+                        {/* <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>
+                            Kamar Peserta Utama
+                        </label> */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#f1f5f9", borderRadius: 6, padding: "6px 10px", width: "fit-content" }}>
+                            <span style={{ color: "#64748b" }}><BedIcon /></span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>({getRoomCapacity(main.tipeKamar)})</span>
+                            {/* <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Kamar:</span> */}
+                            <input
+                            type="text"
+                            placeholder="N/A"
+                            defaultValue={main.kamar}
+                            onBlur={(e) => handleRoomChange(reg.id!, 0, e.target.value, reg.members)}
+                            style={{
+                                border: "1.5px solid #e8ecf0", borderRadius: 6,
+                                padding: "3px 8px", fontSize: 12, width: 72,
+                                fontFamily: "inherit", outline: "none",
+                                transition: "border-color 0.15s",
+                            }}
+                            onFocus={e => (e.currentTarget.style.borderColor = "#c7d2fe")}
+                            onBlurCapture={e => (e.currentTarget.style.borderColor = "#e8ecf0")}
+                            />
+                        </div>
+                        {/* </div> */}
 
                       {/* Transport badge */}
                       <div style={{
@@ -439,59 +489,117 @@ export default function AdminRetreat() {
                             <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>
                               Peserta Lain ({subs.length})
                             </label>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                               {subs.map((s, idx) => (
                                 <div key={idx} style={{
-                                  display: "flex", alignItems: "center", gap: 8,
-                                  padding: "8px 12px", background: "#fff",
+                                  padding: "12px", background: "#fff",
                                   border: "1.5px solid #e8ecf0", borderRadius: 8,
-                                  fontSize: 12, color: "#475569",
+                                  fontSize: 12, color: "#475569",gap: 12,
                                 }}>
-                                  <span style={{ fontWeight: 700, color: "#1e293b" }}>{s.namaLengkap}</span>
-                                  <span style={{ background: "#f1f5f9", borderRadius: 4, padding: "2px 8px", fontSize: 11, color: "#64748b" }}>{s.relasi}</span>
-                                  <span style={{ marginLeft: "auto", color: "#94a3b8" }}>Kaos {s.ukuranKaos} · {s.transportasi === "bus" ? "Bus" : "Mobil"}</span>
+                                  {/* Row 1: Name, Relationship, Shirt Size, Transport */}
+                                  <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginBottom: -5,
+                                        gap: 12,
+                                        flexWrap: "wrap",
+                                    }}
+                                    >
+                                    {/* --- */}
+
+                                    <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginBottom: 8,
+                                        gap: 12,
+                                        flexWrap: "wrap",
+                                    }}
+                                    >
+                                    {/* LEFT SIDE */}
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                                        {/* Name */}
+                                        <span style={{ fontWeight: 700, color: "#1e293b" }}>
+                                        {s.namaLengkap}
+                                        </span>
+
+                                        {/* Divider */}
+                                        <span style={{ color: "#e2e8f0" }}>|</span>
+
+                                        {/* Phone */}
+                                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#64748b" }}>
+                                        <span style={{ fontWeight: 600 }}>Telp:</span>
+                                        <span>{s.nomorTelpon || "-"}</span>
+                                        </div>
+
+                                        {/* Divider */}
+                                        <span style={{ color: "#e2e8f0" }}>|</span>
+
+                                        {/* Kamar */}
+                                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                        <span style={{ color: "#94a3b8" }}>
+                                            <BedIcon />
+                                        </span>
+                                        <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>({getRoomCapacity(s.tipeKamar)})</span>
+                                        <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>
+                                            Kamar:
+                                        </span>
+                                        <input
+                                            type="text"
+                                            placeholder="N/A"
+                                            defaultValue={s.kamar}
+                                            onBlur={(e) => {
+                                            const memberIdx = reg.members.findIndex((m) => m === s);
+                                            if (memberIdx !== -1) {
+                                                handleRoomChange(reg.id!, memberIdx, e.target.value, reg.members);
+                                            }
+                                            }}
+                                            style={{
+                                            border: "1.5px solid #e8ecf0",
+                                            borderRadius: 6,
+                                            padding: "3px 8px",
+                                            fontSize: 12,
+                                            width: 72,
+                                            fontFamily: "inherit",
+                                            outline: "none",
+                                            transition: "border-color 0.15s",
+                                            }}
+                                            onFocus={(e) => (e.currentTarget.style.borderColor = "#c7d2fe")}
+                                            onBlurCapture={(e) => (e.currentTarget.style.borderColor = "#e8ecf0")}
+                                        />
+                                        </div>
+                                    </div>
+
+                                    {/* RIGHT SIDE */}
+                                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                        <span style={badgeStyle}>{s.relasi}</span>
+                                        <span style={badgeStyle}>Kaos {s.ukuranKaos}</span>
+                                        <span style={badgeStyle}>
+                                        {s.transportasi === "bus" ? "Bus" : "Mobil"}
+                                        </span>
+                                    </div>
+                                    </div>
+                            </div>
+                                  
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* Room assignments */}
-                        <div>
-                          <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 8 }}>
-                            Kamar
-                          </label>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                            {reg.members.map((m, mIdx) => (
-                              <div key={mIdx} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "6px 10px" }}>
-                                <span style={{ color: "#94a3b8" }}><BedIcon /></span>
-                                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>{m.isMain ? "Utama" : m.relasi}:</span>
-                                <input
-                                  type="text"
-                                  placeholder="N/A"
-                                  defaultValue={m.kamar}
-                                  onBlur={(e) => handleRoomChange(reg.id!, mIdx, e.target.value, reg.members)}
-                                  style={{
-                                    border: "1.5px solid #e8ecf0", borderRadius: 6,
-                                    padding: "3px 8px", fontSize: 12, width: 72,
-                                    fontFamily: "inherit", outline: "none",
-                                    transition: "border-color 0.15s",
-                                  }}
-                                  onFocus={e => (e.currentTarget.style.borderColor = "#c7d2fe")}
-                                  onBlurCapture={e => (e.currentTarget.style.borderColor = "#e8ecf0")}
-                                />
-                              </div>
-                            ))}
+                        {/* Phone only (if no sub-members) */}
+                        {subs.length === 0 && (
+                          <div>
+                            {/* <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                              No. Telp
+                            </label>
+                            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{main.nomorTelpon}</p> */}
+                            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8", fontWeight: 500 }}>Hanya ada satu nama dalam pendaftaran ini.</p>
                           </div>
-                        </div>
-
-                        {/* Phone */}
-                        <div style={{ marginTop: 12 }}>
-                          <label style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                            No. Telp
-                          </label>
-                          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{main.nomorTelpon}</p>
-                        </div>
+                        )}
                       </div>
                     )}
                   </div>
