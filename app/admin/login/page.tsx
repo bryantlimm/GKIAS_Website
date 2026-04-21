@@ -1,3 +1,4 @@
+// app/admin/login/page.tsx
 'use client';
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -64,7 +65,7 @@ export default function AdminLoginPage() {
 
   // We use this ref to tell the useEffect to ignore state changes if the user 
   // is currently in the middle of clicking the manual "Masuk" button.
-  const isManualLogin = useRef(false);
+  const [isManualLogin, setIsManualLogin] = useState(false);
 
   // 1. Handle auto-redirect if an existing user visits this page
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function AdminLoginPage() {
 
     const verifyExistingUser = async () => {
       // Skip if loading, no user, or if we are handling a manual form submission
-      if (loading || !user || isManualLogin.current) return;
+      if (loading || !user || isManualLogin) return;
 
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -105,7 +106,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
-    isManualLogin.current = true; // Block the useEffect from running concurrently
+    setIsManualLogin(true);
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -119,7 +120,7 @@ export default function AdminLoginPage() {
         await signOut(auth);
         setError('Akun Anda tidak memiliki izin akses Admin.');
         setIsSubmitting(false);
-        isManualLogin.current = false;
+        setIsManualLogin(false);
       }
     } catch (err) {
       if (typeof err === 'object' && err !== null && 'code' in err) {
@@ -137,13 +138,13 @@ export default function AdminLoginPage() {
         setError('Login gagal karena kesalahan tidak terduga.');
       }
       setIsSubmitting(false);
-      isManualLogin.current = false;
+      setIsManualLogin(false);
     }
   };
 
   // ── Loading / redirect state ──
   // Show spinner if Firebase is loading, OR if there is an existing user and it isn't a manual login
-  if (loading || (user && !isManualLogin.current)) {
+  if (loading || (user && !isManualLogin)) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
