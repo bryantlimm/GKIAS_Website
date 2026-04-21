@@ -9,6 +9,8 @@ import VideoSection from '@/components/home/VideoSection';
 import { getHomePageSettings, getServiceSchedules, getLatestNews } from '@/lib/data';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore'; 
+// for retreat purposes
+import RetreatBanner from "@/components/retreat/RetreatBanner";
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +66,8 @@ export default async function Home() {
         heroImageUrls={settings.heroImageUrls}
         schedules={schedules.slice(0, 3)} 
       />
+
+      <RetreatBanner />
 
       <VideoSection 
         title={videoData.title}

@@ -15,6 +15,8 @@ import VideoSectionEditor from './VideoSectionEditor';
 import VolunteerRequestsManager from './VolunteerRequestsManager';
 import AdminHomePage from './AdminHomePage';
 import AdminEventsPage from './AdminEventsPage';
+// for retreat purposes
+import AdminRetreat from "@/components/retreat/AdminRetreat";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -129,7 +131,7 @@ const PeopleIcon = () => (
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type MainMenu = 'home' | 'halaman-utama' | 'warta' | 'volunteer' | 'events';
+type MainMenu = 'home' | 'halaman-utama' | 'warta' | 'volunteer' | 'events' | 'retreat2026';
 type HalamanTab = 'settings' | 'video' | 'schedules' | 'gallery' | 'lfj';
 
 interface HalamanTabConfig {
@@ -226,6 +228,7 @@ export default function AdminDashboardContent() {
     { id: 'warta',         label: 'Warta',              icon: <NewsIcon /> },
     { id: 'volunteer',     label: 'Users Manager', icon: <PeopleIcon /> },
     { id: 'events',        label: 'Events',              icon: <CalendarEvIcon /> },
+    { id: "retreat2026",   label: "Retreat 2026 (NEW)", icon: <BellIcon /> },
   ];
 
   return (
@@ -672,6 +675,9 @@ export default function AdminDashboardContent() {
                 </div>
               </div>
             )}
+
+            {/* Retreat 2026 */}
+            {activeMenu === 'retreat2026' && <AdminRetreat />}
 
           </div>
         </div>
