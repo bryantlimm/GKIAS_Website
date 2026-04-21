@@ -1,3 +1,4 @@
+console.log("firebase.ts initializing, apps count:", getApps().length);
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { initializeFirestore } from "firebase/firestore";
 import { collection, doc, getDoc, setDoc, addDoc, updateDoc,
