@@ -15,41 +15,41 @@ export default function QRScanner({ onScan, onClose }: Props) {
   const [started, setStarted] = useState(false);
 
   useEffect(() => {
-    // Strict mode guard — only init once
-    if (scannerRef.current) return;
+  if (scannerRef.current) return;
 
-    const html5Qrcode = new Html5Qrcode("qr-reader");
-    scannerRef.current = html5Qrcode;
+  const html5Qrcode = new Html5Qrcode("qr-reader");
+  scannerRef.current = html5Qrcode;
 
-    html5Qrcode
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          if (!isRunningRef.current) return;
-          isRunningRef.current = false;
-          html5Qrcode.stop()
-            .catch(() => {})
-            .finally(() => onScan(decodedText));
-        },
-        () => {}
-      )
-      .then(() => {
-        isRunningRef.current = true;
-        setStarted(true);
-      })
-      .catch((err) => {
-        console.error("Camera error:", err);
-        setError("Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.");
-      });
-
-    return () => {
-      if (isRunningRef.current) {
+  html5Qrcode
+    .start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        console.log("QR decoded:", JSON.stringify(decodedText));
+        if (!isRunningRef.current) return;
         isRunningRef.current = false;
-        html5Qrcode.stop().catch(() => {});
-      }
-    };
-  }, [onScan]);
+        html5Qrcode.stop()
+          .catch(() => {})
+          .finally(() => onScan(decodedText.trim())); // trim added
+      },
+      () => {}
+    )
+    .then(() => {
+      isRunningRef.current = true;
+      setStarted(true);
+    })
+    .catch((err) => {
+      console.error("Camera error:", err);
+      setError("Tidak bisa mengakses kamera. Pastikan izin kamera sudah diberikan.");
+    });
+
+  return () => {
+    if (isRunningRef.current) {
+      isRunningRef.current = false;
+      html5Qrcode.stop().catch(() => {});
+    }
+  };
+}, []); // ← empty deps, stableOnScan never changes so this is safe
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">

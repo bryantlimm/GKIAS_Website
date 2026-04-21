@@ -77,11 +77,15 @@ useEffect(() => {
 
 const [scanError, setScanError] = useState("");
 const handleScan = useCallback(async (qrId: string) => {
-  setShowScanner(false);
-  setScanMsg("");
-  setScanError("");
+    console.log("handleScan called with:", qrId);
+    console.log("registrations at time of scan:", registrations.length, registrations.map(r => r.id));
 
-  const found = registrations.find((r) => r.id === qrId);
+    setShowScanner(false);
+    setScanMsg("");
+    setScanError("");
+
+    const found = registrations.find((r) => r.id === qrId);
+    console.log("found:", found);
 
   if (!found) {
     setScanError("Pendaftaran tidak ditemukan untuk QR ini.");
