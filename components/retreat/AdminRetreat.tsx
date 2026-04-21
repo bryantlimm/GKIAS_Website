@@ -1,3 +1,4 @@
+// components/retreat/AdminRetreat.tsx
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
@@ -11,6 +12,8 @@ import {
   uploadRetreatImage,
 } from "@/lib/firebase";
 import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const QRScanner = dynamic(() => import("./QRScanner"), { ssr: false });
 
@@ -33,14 +36,42 @@ export default function AdminRetreat() {
   const [confirmApprove, setConfirmApprove] = useState<string | null>(null);
   const [confirmCheckin, setConfirmCheckin] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([getRetreatConfig(), getAllRegistrations()]).then(([cfg, regs]) => {
-      setConfig(cfg || {});
-      setRegistrations(regs);
-      setLoading(false);
-    });
-  }, []);
+//   useEffect(() => {
+//     Promise.all([getRetreatConfig(), getAllRegistrations()]).then(([cfg, regs]) => {
+//       setConfig(cfg || {});
+//       setRegistrations(regs);
+//       setLoading(false);
+//     });
+//   }, []);
 
+useEffect(() => {
+  // Listen for the auth state to resolve before fetching
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        // User is confirmed to be logged in, now fetch the data
+        const [cfg, regs] = await Promise.all([
+          getRetreatConfig(), 
+          getAllRegistrations()
+        ]);
+        setConfig(cfg || {});
+        setRegistrations(regs);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        // If they are logged in but NOT an admin, it will fail here.
+        // You might want to set an error state to show the user.
+      }
+    } else {
+      // User is not logged in. Redirect to login or show a message.
+      console.warn("No user is logged in.");
+      // Optional: router.push("/login");
+    }
+    setLoading(false);
+  });
+
+  // Cleanup listener on unmount
+  return () => unsubscribe();
+}, []);
   // ── QR Scan handler ────────────────────────────────────────────────────────
   const handleScan = useCallback(async (qrId: string) => {
     setShowScanner(false);

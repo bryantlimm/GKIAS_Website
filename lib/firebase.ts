@@ -1,6 +1,6 @@
 // Import the functions
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, getDocs, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, getDocs, query, orderBy, serverTimestamp, where } from "firebase/firestore";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { RetreatConfig, RetreatRegistration } from "./retreat-types";
@@ -23,7 +23,7 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
 
-// ── Config retreat
+// ── Config — points to retreat2026/config (already exists in your Firestore)
 export async function getRetreatConfig(): Promise<RetreatConfig | null> {
   const snap = await getDoc(doc(db, "retreat2026", "config"));
   return snap.exists() ? (snap.data() as RetreatConfig) : null;
@@ -33,11 +33,11 @@ export async function updateRetreatConfig(data: Partial<RetreatConfig>) {
   await setDoc(doc(db, "retreat2026", "config"), data, { merge: true });
 }
 
-// ── Registrations retreat
+// ── Registrations — flat collection, no nesting
 export async function createRegistration(
   registration: Omit<RetreatRegistration, "id" | "createdAt">
 ) {
-  const colRef = collection(db, "retreat2026", "registrations", "list");
+  const colRef = collection(db, "retreat2026_registrations");
   const docRef = await addDoc(colRef, {
     ...registration,
     createdAt: serverTimestamp(),
@@ -45,20 +45,20 @@ export async function createRegistration(
   return docRef.id;
 }
 
-export async function getRegistrationByUid(uid: string) {
+export async function getRegistrationByUid(uid: string): Promise<RetreatRegistration | null> {
   const q = query(
-    collection(db, "retreat2026", "registrations", "list"),
-    orderBy("createdAt", "desc")
+    collection(db, "retreat2026_registrations"),
+    where("uid", "==", uid)
   );
   const snap = await getDocs(q);
-  const found = snap.docs.find((d) => d.data().uid === uid);
-  if (!found) return null;
-  return { id: found.id, ...found.data() } as RetreatRegistration;
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...d.data() } as RetreatRegistration;
 }
 
 export async function getAllRegistrations(): Promise<RetreatRegistration[]> {
   const q = query(
-    collection(db, "retreat2026", "registrations", "list"),
+    collection(db, "retreat2026_registrations"),
     orderBy("createdAt", "desc")
   );
   const snap = await getDocs(q);
@@ -69,10 +69,7 @@ export async function updateRegistrationStatus(
   id: string,
   status: "registered" | "approved" | "checked_in"
 ) {
-  await updateDoc(
-    doc(db, "retreat2026", "registrations", "list", id),
-    { status }
-  );
+  await updateDoc(doc(db, "retreat2026_registrations", id), { status });
 }
 
 export async function updateMemberRoom(
@@ -83,10 +80,7 @@ export async function updateMemberRoom(
 ) {
   const updated = [...members];
   updated[memberIndex] = { ...updated[memberIndex], kamar };
-  await updateDoc(
-    doc(db, "retreat2026", "registrations", "list", id),
-    { members: updated }
-  );
+  await updateDoc(doc(db, "retreat2026_registrations", id), { members: updated });
 }
 
 // ── Storage retreat

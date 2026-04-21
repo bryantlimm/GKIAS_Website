@@ -156,7 +156,7 @@ export default function MyRegistrationPage() {
       <div className="max-w-xl mx-auto space-y-6">
 
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mt-10">
           <h1 className="text-2xl font-bold text-gray-800">Pendaftaran Saya</h1>
           <button onClick={handleSignOut} className="text-sm text-gray-400 hover:underline">
             Keluar
