@@ -85,6 +85,14 @@ const DownloadIcon = () => (
   </svg>
 );
 
+const ReceiptIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <line x1="9" y1="9" x2="15" y2="9"/>
+    <line x1="9" y1="15" x2="15" y2="15"/>
+  </svg>
+);
+
 const getStatusStyle = (status: string): { bg: string; color: string; border: string } => {
   switch (status) {
     case "registered":   return { bg: "#fefce8", color: "#ca8a04", border: "#fde68a" };
@@ -138,6 +146,9 @@ export default function AdminRetreat() {
   // Confirmation popups
   const [confirmApprove, setConfirmApprove] = useState<string | null>(null);
   const [confirmCheckin, setConfirmCheckin] = useState<string | null>(null);
+
+  // Payment proof modal
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
 
   useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -488,6 +499,22 @@ export default function AdminRetreat() {
                       }}>
                         {getStatusLabel(reg.status)}
                       </div>
+
+                      {/* Payment proof button */}
+                      <button
+                        onClick={() => setPaymentProofUrl(reg.paymentProofUrl)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          padding: "7px 14px", background: "#f3f4f6", color: "#6b7280",
+                          border: "1.5px solid #e5e7eb", borderRadius: 7,
+                          cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#e5e7eb"; e.currentTarget.style.borderColor = "#d1d5db"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "#f3f4f6"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
+                      >
+                        <ReceiptIcon /> Bukti
+                      </button>
 
                       {/* Action buttons */}
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -945,6 +972,32 @@ export default function AdminRetreat() {
           onConfirm={() => handleCheckin(confirmCheckin)}
           onCancel={() => setConfirmCheckin(null)}
         />
+      )}
+
+      {/* ── PAYMENT PROOF MODAL ── */}
+      {paymentProofUrl && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, margin: "0 16px", maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            <div style={{ marginBottom: 16 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 12 }}>Bukti Pembayaran</h2>
+              <img
+                src={paymentProofUrl}
+                alt="Bukti pembayaran"
+                style={{ width: "100%", maxHeight: "50vh", objectFit: "contain", borderRadius: 10, display: "block" }}
+              />
+            </div>
+            <button
+              onClick={() => setPaymentProofUrl(null)}
+              style={{
+                width: "100%", padding: "11px", background: "#f1f5f9",
+                color: "#475569", border: "none", borderRadius: 10,
+                fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+              }}
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -144,7 +144,7 @@ export default function RetreatLandingPage() {
             </Link>
           ) : (
             <div className="flex-1 bg-gray-200 text-gray-400 text-center py-4 rounded-2xl font-bold text-base cursor-not-allowed select-none">
-              Pendaftaran Ditutup
+              Pendaftaran Belum Dibuka
             </div>
           )}
           <Link
