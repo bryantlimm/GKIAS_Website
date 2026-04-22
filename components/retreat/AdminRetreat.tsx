@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import * as XLSX from "xlsx";
 import {
   getRetreatConfig,
   updateRetreatConfig,
@@ -74,6 +75,13 @@ const UploadIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
     <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
+    <path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
   </svg>
 );
 
@@ -223,6 +231,53 @@ export default function AdminRetreat() {
     await updateRetreatConfig({ [key]: url });
   }
 
+  function handleExportXLSX() {
+    if (registrations.length === 0) {
+      alert("Tidak ada data untuk diexport");
+      return;
+    }
+
+    // Map transportasi and ukuranKaos to display values
+    const transportasiMap: Record<string, string> = { bus: "Bus", mobil_sendiri: "Mobil Sendiri" };
+    const statusMap: Record<string, string> = {
+      registered: "Terdaftar",
+      approved: "Disetujui",
+      checked_in: "Checked In",
+    };
+
+    // Flatten all members from all registrations
+    const exportData = registrations.flatMap((reg) =>
+      reg.members.map((member) => ({
+        "Nama": member.namaLengkap,
+        "Nomor Telepon": member.nomorTelpon,
+        "Transportasi": transportasiMap[member.transportasi] || member.transportasi,
+        "Ukuran Kaos": member.ukuranKaos,
+        "Tipe Kamar": member.tipeKamar,
+        "Nomor Kamar": member.kamar,
+        "Status": statusMap[reg.status] || reg.status,
+      }))
+    );
+
+    // Create worksheet and workbook
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Registrasi");
+
+    // Set column widths
+    worksheet["!cols"] = [
+      { wch: 25 }, // Nama
+      { wch: 15 }, // Nomor Telepon
+      { wch: 15 }, // Transportasi
+      { wch: 12 }, // Ukuran Kaos
+      { wch: 12 }, // Tipe Kamar
+      { wch: 12 }, // Nomor Kamar
+      { wch: 12 }, // Status
+    ];
+
+    // Download the file
+    XLSX.writeFile(workbook, `Registrasi-Retreat-${new Date().toISOString().split("T")[0]}.xlsx`);
+  }
+
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#94a3b8", padding: "24px 0" }}>
@@ -267,23 +322,40 @@ export default function AdminRetreat() {
           ))}
         </div>
 
-        {/* Scan button — only on list tab */}
+        {/* Scan and Export buttons — only on list tab */}
         {tab === "list" && (
-          <button
-            onClick={() => { setShowScanner(true); setScanMsg(""); setScannedReg(null); }}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "8px 16px", borderRadius: 8, border: "1.5px solid #c7d2fe",
-              background: "#eff3ff", color: "#3b5bdb",
-              fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#3b5bdb"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "#3b5bdb"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "#eff3ff"; e.currentTarget.style.color = "#3b5bdb"; e.currentTarget.style.borderColor = "#c7d2fe"; }}
-          >
-            <ScanIcon />
-            Scan QR
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { setShowScanner(true); setScanMsg(""); setScannedReg(null); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 16px", borderRadius: 8, border: "1.5px solid #c7d2fe",
+                background: "#eff3ff", color: "#3b5bdb",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#3b5bdb"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "#3b5bdb"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#eff3ff"; e.currentTarget.style.color = "#3b5bdb"; e.currentTarget.style.borderColor = "#c7d2fe"; }}
+            >
+              <ScanIcon />
+              Scan QR
+            </button>
+            <button
+              onClick={handleExportXLSX}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 16px", borderRadius: 8, border: "1.5px solid #e8ecf0",
+                background: "#f8fafc", color: "#475569",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#e2e8f0"; e.currentTarget.style.borderColor = "#cbd5e1"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "#e8ecf0"; }}
+            >
+              <DownloadIcon />
+              Export XLSX
+            </button>
+          </div>
         )}
       </div>
 
