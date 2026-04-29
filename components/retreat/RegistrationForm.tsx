@@ -36,12 +36,15 @@ function formatRupiah(n: number) {
   return "Rp " + n.toLocaleString("id-ID") + ",-";
 }
 
-function calcTotal(members: RetreatMember[]) {
-  return members.reduce((sum, m) => sum + m.hargaKamar, 0);
+function calcTotal(members: RetreatMember[], sponsorCount: number) {
+  const memberTotal = members.reduce((sum, m) => sum + m.hargaKamar, 0);
+  // Sponsors are assumed to be jemaat isi4 (the base/cheapest rate) — adjust if needed
+  const sponsorTotal = sponsorCount * HARGA_JEMAAT["isi4"];
+  return memberTotal + sponsorTotal;
 }
 
-const STEPS = ["auth", "member", "payment", "done"] as const;
-const STEP_LABELS = ["Akun", "Data Diri", "Pembayaran"];
+const STEPS = ["auth", "member", "sponsor", "payment", "done"] as const;
+const STEP_LABELS = ["Akun", "Data Diri", "Sponsorship", "Pembayaran"];
 
 export default function RegistrationForm() {
   const router = useRouter();
@@ -54,8 +57,13 @@ export default function RegistrationForm() {
   const [members, setMembers] = useState<RetreatMember[]>([emptyMember(true)]);
   const [currentMemberIdx, setCurrentMemberIdx] = useState(0);
 
-  const [step, setStep] = useState<"auth" | "member" | "payment" | "done">("auth");
+  const [step, setStep] = useState<"auth" | "member" | "sponsor" | "payment" | "done">("auth");
   const [addingMore, setAddingMore] = useState(false);
+
+  // ── Sponsorship state ──────────────────────────────────────────────────────
+  const [wantsToSponsor, setWantsToSponsor] = useState<boolean | null>(null);
+  const [sponsorCountInput, setSponsorCountInput] = useState("1");
+  const [sponsorCount, setSponsorCount] = useState(0);
 
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -108,8 +116,24 @@ export default function RegistrationForm() {
     setAddingMore(false);
   }
 
+  // When done adding members, go to sponsorship step instead of payment
   function handleNoMore() {
     setAddingMore(false);
+    setWantsToSponsor(null);
+    setStep("sponsor");
+  }
+
+  // ── Sponsorship handlers ───────────────────────────────────────────────────
+
+  function handleSponsorNo() {
+    setSponsorCount(0);
+    setStep("payment");
+  }
+
+  function handleSponsorConfirm() {
+    const count = parseInt(sponsorCountInput);
+    if (!count || count < 1) return;
+    setSponsorCount(count);
     setStep("payment");
   }
 
@@ -130,7 +154,8 @@ export default function RegistrationForm() {
         status: "registered",
         qrCode: qrDataUrl,
         paymentProofUrl: paymentUrl,
-        totalAmount: calcTotal(members),
+        totalAmount: calcTotal(members, sponsorCount),
+        sponsorCount,
         members,
       });
       setStep("done");
@@ -142,7 +167,11 @@ export default function RegistrationForm() {
     }
   }
 
-  const stepIndex = STEPS.indexOf(step);
+  // Map step to index for the progress bar (exclude "done" from labels)
+  const stepToIndex: Record<string, number> = {
+    auth: 0, member: 1, sponsor: 2, payment: 3,
+  };
+  const stepIndex = stepToIndex[step] ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-12 px-4">
@@ -168,7 +197,6 @@ export default function RegistrationForm() {
                 );
               })}
             </div>
-            {/* Progress line */}
             <div className="relative h-1 bg-gray-200 rounded-full mx-4">
               <div
                 className="absolute h-1 bg-blue-600 rounded-full transition-all duration-500"
@@ -253,7 +281,7 @@ export default function RegistrationForm() {
               <div>
                 <h2 className="text-xl font-bold text-gray-800">Tambah Peserta Lain?</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Total sementara: <strong className="text-gray-800">{formatRupiah(calcTotal(members))}</strong>
+                  Total sementara: <strong className="text-gray-800">{formatRupiah(calcTotal(members, 0))}</strong>
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -263,9 +291,121 @@ export default function RegistrationForm() {
                 </button>
                 <button onClick={handleNoMore}
                   className="flex-1 bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition text-sm">
-                  Lanjut ke Pembayaran →
+                  Lanjut →
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* ── STEP: SPONSOR ── */}
+          {step === "sponsor" && (
+            <div className="space-y-6">
+              <div className="space-y-1 mb-2">
+                <h2 className="text-2xl font-bold text-gray-800">Sponsorship</h2>
+                <p className="text-sm text-gray-500">
+                  Apakah Anda ingin menanggung biaya retreat untuk orang lain yang membutuhkan?
+                </p>
+              </div>
+
+              {/* Illustration / icon */}
+              <div className="flex items-start gap-4 bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Berbagi Berkat</p>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    Jika ada anggota jemaat yang ingin ikut retreat namun terkendala biaya,
+                    Anda bisa menanggung biaya mereka. Nama peserta yang disponsori akan diatur oleh admin gereja.
+                  </p>
+                </div>
+              </div>
+
+              {/* Yes / No buttons — only shown if not yet chosen */}
+              {wantsToSponsor === null && (
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button onClick={() => setWantsToSponsor(false)}
+                    className="flex-1 border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl font-semibold hover:border-gray-300 active:scale-[0.98] transition text-sm">
+                    Tidak, lanjut
+                  </button>
+                  <button onClick={() => setWantsToSponsor(true)}
+                    className="flex-1 bg-amber-500 text-white py-3.5 rounded-xl font-semibold hover:bg-amber-600 active:scale-[0.98] transition text-sm">
+                    Ya, saya mau sponsori ♥
+                  </button>
+                </div>
+              )}
+
+              {/* If No → go straight to payment */}
+              {wantsToSponsor === false && (
+                <div className="pt-2">
+                  <button onClick={handleSponsorNo}
+                    className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition text-sm">
+                    Lanjut ke Pembayaran →
+                  </button>
+                </div>
+              )}
+
+              {/* If Yes → ask how many */}
+              {wantsToSponsor === true && (
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      Berapa orang yang ingin Anda sponsori?
+                    </label>
+                    {/* Quick-pick buttons */}
+                    <div className="flex gap-2 mb-3">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button key={n} type="button"
+                          onClick={() => setSponsorCountInput(String(n))}
+                          className={`w-11 h-11 rounded-xl border-2 font-bold text-sm transition active:scale-95
+                            ${sponsorCountInput === String(n)
+                              ? "border-amber-500 bg-amber-500 text-white"
+                              : "border-gray-200 text-gray-600 hover:border-amber-300"}`}>
+                          {n}
+                        </button>
+                      ))}
+                      <input
+                        type="number"
+                        min={1}
+                        value={sponsorCountInput}
+                        onChange={(e) => setSponsorCountInput(e.target.value)}
+                        className="flex-1 border-2 border-gray-200 rounded-xl px-3 text-sm font-semibold text-center focus:outline-none focus:border-amber-400 transition"
+                        placeholder="Lainnya"
+                      />
+                    </div>
+
+                    {/* Preview */}
+                    {parseInt(sponsorCountInput) > 0 && (
+                      <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm">
+                        <p className="text-amber-800 font-semibold">
+                          Mensponsori {sponsorCountInput} orang ·{" "}
+                          <span className="text-amber-600">
+                            +{formatRupiah(parseInt(sponsorCountInput) * HARGA_JEMAAT["isi4"])}
+                          </span>
+                        </p>
+                        <p className="text-amber-600 text-xs mt-0.5">
+                          Dihitung dengan tarif Jemaat Kamar isi 4. Admin gereja akan mengatur alokasi peserta.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button onClick={() => setWantsToSponsor(null)}
+                      className="flex-1 border-2 border-gray-200 text-gray-500 py-3 rounded-xl font-semibold text-sm hover:border-gray-300 transition active:scale-[0.98]">
+                      ← Kembali
+                    </button>
+                    <button
+                      onClick={handleSponsorConfirm}
+                      disabled={!parseInt(sponsorCountInput) || parseInt(sponsorCountInput) < 1}
+                      className="flex-[2] bg-amber-500 text-white py-3 rounded-xl font-semibold text-sm hover:bg-amber-600 active:scale-[0.98] transition disabled:opacity-40 disabled:cursor-not-allowed">
+                      Konfirmasi & Lanjut →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -286,9 +426,19 @@ export default function RegistrationForm() {
                     <span className="font-medium text-gray-800">{formatRupiah(m.hargaKamar)}</span>
                   </div>
                 ))}
+                {/* Sponsorship line */}
+                {sponsorCount > 0 && (
+                  <div className="flex justify-between text-sm text-amber-700 pt-1">
+                    <span className="flex items-center gap-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      Sponsorship ({sponsorCount} orang)
+                    </span>
+                    <span className="font-medium">{formatRupiah(sponsorCount * HARGA_JEMAAT["isi4"])}</span>
+                  </div>
+                )}
                 <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between font-bold text-sm">
                   <span>Total</span>
-                  <span className="text-blue-600 text-base">{formatRupiah(calcTotal(members))}</span>
+                  <span className="text-blue-600 text-base">{formatRupiah(calcTotal(members, sponsorCount))}</span>
                 </div>
               </div>
 
@@ -391,9 +541,31 @@ function MemberFields({
         onChange={(e) => onChange("alamatRumah", e.target.value)}
         rows={2} className={`${inputClass} resize-none`} />
 
-      {/* Kaos */}
+      {/* ── Kaos with size guide photos ───────────────────────────────────── */}
       <div>
         <label className={labelClass}>Ukuran Kaos</label>
+
+        {/* Size guide photos */}
+        {/* <div className="grid grid-cols-2 gap-2 mb-3"> */}
+          <div className="rounded-xl overflow-hidden border border-gray-100 mb-5">
+            <img
+              src="/photo1.jpg"
+              alt="Panduan ukuran kaos (depan)"
+              className="w-full object-cover"
+            />
+            <p className="text-center text-xs text-gray-400 py-1.5 bg-gray-50">Ukuran Kaos</p>
+          </div>
+          {/* <div className="rounded-xl overflow-hidden border border-gray-100">
+            <img
+              src="/photo2.jpg"
+              alt="Panduan ukuran kaos (belakang)"
+              className="w-full object-cover"
+            />
+            <p className="text-center text-xs text-gray-400 py-1.5 bg-gray-50">Tampak Belakang</p>
+          </div> */}
+        {/* </div> */}
+
+        {/* Size picker */}
         <div className="flex gap-2 flex-wrap">
           {(["S", "M", "L", "XL", "XXL"] as KaosSize[]).map((s) => (
             <button key={s} type="button" onClick={() => onChange("ukuranKaos", s)}
