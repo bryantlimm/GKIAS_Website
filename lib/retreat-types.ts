@@ -1,3 +1,4 @@
+// lib/retreat-types.ts
 export type KaosSize = "S" | "M" | "L" | "XL" | "XXL";
 export type TipeKamar = "isi4" | "isi3" | "isi2";
 export type Transportasi = "bus" | "mobil_sendiri";
@@ -19,16 +20,16 @@ export interface RetreatMember {
 }
 
 export interface RetreatRegistration {
-    id?: string;
-    uid: string;
-    email: string;
-    createdAt: any;
-    status: RegistrationStatus;
-    qrCode: string;
-    paymentProofUrl: string;
-    totalAmount: number;
-    members: RetreatMember[];
-    sponsorCount: number;
+  id: string;
+  createdAt: import("firebase/firestore").Timestamp;
+  mainNama: string;
+  mainTelpon: string;
+  status: string;
+  qrCode: string;
+  paymentProofUrl: string;
+  totalAmount: number;
+  sponsorCount: number;
+  members: RetreatMember[];
 }
 
 export interface RetreatConfig {

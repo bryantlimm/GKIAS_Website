@@ -1,19 +1,12 @@
 // retreatkeluarga2026/myregistration/page.tsx
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  signInRetreatUser,
-  sendRetreatPasswordReset,
-  signOutUser,
-  getRegistrationByUid,
-} from "@/lib/firebase";
-import { db, auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import type { RetreatRegistration } from "@/lib/retreat-types";
-
+import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import type { RetreatRegistration } from "@/lib/retreat-types";
+import { LABEL_TIPE_KAMAR } from "@/lib/retreat-types";
 
 const STATUS_STEPS = ["registered", "approved", "checked_in"] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -24,133 +17,120 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function MyRegistrationPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ uid: string; email: string | null } | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // Lookup form state
+  const [namaInput, setNamaInput] = useState("");
+  const [telponInput, setTelponInput] = useState("");
+  const [lookupError, setLookupError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Result state
   const [registration, setRegistration] = useState<RetreatRegistration | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const [loadingReg, setLoadingReg] = useState(false);
 
-  // Sign-in state
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [signInError, setSignInError] = useState("");
-  const [resetSent, setResetSent] = useState(false);
+  async function handleLookup() {
+    const nama = namaInput.trim();
+    const telpon = telponInput.trim();
 
-  // Auth state listener
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser({ uid: u.uid, email: u.email });
-        setLoadingReg(true); // Start loading data
-        
-        const reg = await getRegistrationByUid(u.uid);
-        setRegistration(reg);
-        
-        setLoadingReg(false); // Stop loading data
-      } else {
-        setUser(null);
-        setRegistration(null);
-      }
-      setLoadingAuth(false); // Auth check is done
-    });
-    return unsub;
-  }, []);
-  
-  async function handleSignIn() {
-    setSignInError("");
+    if (!nama || !telpon) {
+        setLookupError("Harap isi nama lengkap dan nomor telepon.");
+        return;
+    }
+
+    setLoading(true);
+    setLookupError("");
+
     try {
-      await signInRetreatUser(email, password);
-    } catch {
-      setSignInError("Email atau password salah.");
+        const q = query(
+        collection(db, "retreat2026_registrations"),
+        where("mainNama", "==", nama)
+        );
+        const snap = await getDocs(q);
+
+        // Filter by phone on the client side
+        const match = snap.docs.find(
+        (d) => d.data().mainTelpon === telpon
+        );
+
+        if (!match) {
+        setLookupError("Data tidak ditemukan. Pastikan nama dan nomor telepon sesuai.");
+        setRegistration(null);
+        } else {
+        setRegistration({ id: match.id, ...match.data() } as RetreatRegistration);
+        }
+    } catch (e) {
+        console.error(e);
+        setLookupError("Terjadi kesalahan. Coba lagi.");
+    } finally {
+        setLoading(false);
     }
-  }
-
-  async function handleForgotPassword() {
-    if (!email) {
-      setSignInError("Masukkan email Anda dulu.");
-      return;
     }
-    await sendRetreatPasswordReset(email);
-    setResetSent(true);
+
+  function handleReset() {
+    setRegistration(null);
+    setNamaInput("");
+    setTelponInput("");
+    setLookupError("");
   }
 
-  async function handleSignOut() {
-    await signOutUser();
-  }
-
-if (loadingAuth || loadingReg) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-gray-400">Memuat...</p>
-    </div>
-  );
-
-  // ── Sign-in gate ───────────────────────────────────────────────────────────
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-sm space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800">Masuk</h2>
-          <p className="text-sm text-gray-500">
-            Gunakan email dan password yang didaftarkan saat mendaftar.
-          </p>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
-            className="w-full border rounded-lg px-4 py-2"
-          />
-          {signInError && <p className="text-red-500 text-sm">{signInError}</p>}
-          {resetSent && (
-            <p className="text-green-600 text-sm">
-              Email reset password sudah dikirim. Cek inbox Anda.
-            </p>
-          )}
-          <button
-            onClick={handleSignIn}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
-          >
-            Masuk
-          </button>
-          <button
-            onClick={handleForgotPassword}
-            className="w-full text-sm text-blue-600 hover:underline"
-          >
-            Lupa Password?
-          </button>
-          <button
-            onClick={() => router.push("/retreatkeluarga2026/registration")}
-            className="w-full text-sm text-gray-500 hover:underline"
-          >
-            Belum punya akun? Daftar di sini →
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── No registration found ──────────────────────────────────────────────────
+  // ── Lookup form ────────────────────────────────────────────────────────────
   if (!registration) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="text-center space-y-4">
-          <p className="text-gray-600">Tidak ditemukan pendaftaran untuk akun ini.</p>
+        <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-sm space-y-5">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-gray-800">Cek Pendaftaran</h2>
+            <p className="text-sm text-gray-500">
+              Masukkan nama lengkap dan nomor telepon pendaftar utama.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Nama Lengkap Pendaftar Utama
+              </label>
+              <input
+                type="text"
+                placeholder="Nama sesuai saat pendaftaran"
+                value={namaInput}
+                onChange={(e) => setNamaInput(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                Nomor Telepon
+              </label>
+              <input
+                type="tel"
+                placeholder="Nomor sesuai saat pendaftaran"
+                value={telponInput}
+                onChange={(e) => setTelponInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+              />
+            </div>
+          </div>
+
+          {lookupError && (
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600">
+              {lookupError}
+            </div>
+          )}
+
+          <button
+            onClick={handleLookup}
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? "Mencari..." : "Cek Status →"}
+          </button>
+
           <button
             onClick={() => router.push("/retreatkeluarga2026/registration")}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold"
+            className="w-full text-sm text-gray-400 hover:text-gray-600 hover:underline transition"
           >
-            Daftar Sekarang
-          </button>
-          <button onClick={handleSignOut} className="block text-sm text-gray-400 hover:underline mx-auto">
-            Keluar
+            Belum daftar? Daftar di sini →
           </button>
         </div>
       </div>
@@ -158,7 +138,9 @@ if (loadingAuth || loadingReg) return (
   }
 
   // ── Registration dashboard ─────────────────────────────────────────────────
-  const currentStatusIdx = STATUS_STEPS.indexOf(registration.status as typeof STATUS_STEPS[number]);
+  const currentStatusIdx = STATUS_STEPS.indexOf(
+    registration.status as (typeof STATUS_STEPS)[number]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -167,8 +149,11 @@ if (loadingAuth || loadingReg) return (
         {/* Header */}
         <div className="flex justify-between items-center mt-10">
           <h1 className="text-2xl font-bold text-gray-800">Pendaftaran Saya</h1>
-          <button onClick={handleSignOut} className="text-sm text-gray-400 hover:underline">
-            Keluar
+          <button
+            onClick={handleReset}
+            className="text-sm text-gray-400 hover:text-gray-600 hover:underline transition"
+          >
+            ← Cari lain
           </button>
         </div>
 
@@ -185,7 +170,7 @@ if (loadingAuth || loadingReg) return (
                   >
                     {i <= currentStatusIdx ? "✓" : i + 1}
                   </div>
-                  <p className={`text-xs mt-1 ${i <= currentStatusIdx ? "text-green-600 font-semibold" : "text-gray-400"}`}>
+                  <p className={`text-xs mt-1 text-center ${i <= currentStatusIdx ? "text-green-600 font-semibold" : "text-gray-400"}`}>
                     {STATUS_LABELS[s]}
                   </p>
                 </div>
@@ -196,6 +181,13 @@ if (loadingAuth || loadingReg) return (
             ))}
           </div>
         </div>
+
+        {/* Pending notice */}
+        {registration.status === "registered" && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-700">
+            Pendaftaran Anda sedang menunggu persetujuan admin. QR code akan muncul setelah disetujui.
+          </div>
+        )}
 
         {/* QR Code — shown only when approved or checked in */}
         {(registration.status === "approved" || registration.status === "checked_in") && (
@@ -212,11 +204,22 @@ if (loadingAuth || loadingReg) return (
           </div>
         )}
 
-        {registration.status === "registered" && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-700">
-            Pendaftaran Anda sedang menunggu persetujuan admin. QR code akan muncul setelah disetujui.
+        {/* Summary */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-2">
+          <p className="text-sm font-semibold text-gray-500 mb-3">Ringkasan</p>
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Total Pembayaran</span>
+            <span className="font-bold text-gray-800">
+              Rp {registration.totalAmount.toLocaleString("id-ID")},-
+            </span>
           </div>
-        )}
+          {registration.sponsorCount > 0 && (
+            <div className="flex justify-between text-sm text-amber-600">
+              <span>Sponsorship</span>
+              <span className="font-semibold">{registration.sponsorCount} orang</span>
+            </div>
+          )}
+        </div>
 
         {/* Members list */}
         <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
@@ -243,7 +246,7 @@ if (loadingAuth || loadingReg) return (
               <div className="grid grid-cols-2 gap-1 mt-2 text-xs text-gray-500">
                 <span>Ukuran kaos: {m.ukuranKaos}</span>
                 <span>Transportasi: {m.transportasi === "bus" ? "Bus" : "Mobil Sendiri"}</span>
-                <span>Tipe kamar: {m.tipeKamar}</span>
+                <span>Tipe kamar: {LABEL_TIPE_KAMAR[m.tipeKamar]}</span>
                 <span>Umur: {m.umur}</span>
               </div>
             </div>

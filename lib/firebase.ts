@@ -45,9 +45,6 @@ export async function createRegistration(
     ...registration,
     createdAt: serverTimestamp(),
   });
-  const QRCode = (await import("qrcode")).default;
-  const qrDataUrl = await QRCode.toDataURL(docRef.id, { width: 300 });
-  await updateDoc(docRef, { qrCode: qrDataUrl });
   return docRef.id;
 }
 

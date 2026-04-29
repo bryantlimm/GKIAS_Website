@@ -1,9 +1,9 @@
+// components/retreat/RegistrationForm.tsx
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import {
-  registerRetreatUser,
   createRegistration,
   uploadPaymentProof,
 } from "@/lib/firebase";
@@ -38,29 +38,23 @@ function formatRupiah(n: number) {
 
 function calcTotal(members: RetreatMember[], sponsorCount: number) {
   const memberTotal = members.reduce((sum, m) => sum + m.hargaKamar, 0);
-  // Sponsors are assumed to be jemaat isi4 (the base/cheapest rate) — adjust if needed
   const sponsorTotal = sponsorCount * HARGA_JEMAAT["isi4"];
   return memberTotal + sponsorTotal;
 }
 
-const STEPS = ["auth", "member", "sponsor", "payment", "done"] as const;
-const STEP_LABELS = ["Akun", "Data Diri", "Sponsorship", "Pembayaran"];
+const STEP_LABELS = ["Data Diri", "Sponsorship", "Pembayaran"];
 
 export default function RegistrationForm() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [authError, setAuthError] = useState("");
-
   const [members, setMembers] = useState<RetreatMember[]>([emptyMember(true)]);
   const [currentMemberIdx, setCurrentMemberIdx] = useState(0);
 
-  const [step, setStep] = useState<"auth" | "member" | "sponsor" | "payment" | "done">("auth");
+  // Start directly at member step — no auth required
+  const [step, setStep] = useState<"member" | "sponsor" | "payment" | "done">("member");
   const [addingMore, setAddingMore] = useState(false);
 
-  // ── Sponsorship state ──────────────────────────────────────────────────────
+  // Sponsorship state
   const [wantsToSponsor, setWantsToSponsor] = useState<boolean | null>(null);
   const [sponsorCountInput, setSponsorCountInput] = useState("1");
   const [sponsorCount, setSponsorCount] = useState(0);
@@ -83,23 +77,6 @@ export default function RegistrationForm() {
     });
   }
 
-  async function handleAuth() {
-    setAuthError("");
-    if (password !== confirmPassword) { setAuthError("Password tidak cocok."); return; }
-    if (password.length < 6) { setAuthError("Password minimal 6 karakter."); return; }
-    try {
-      await registerRetreatUser(email, password);
-      setStep("member");
-    } catch (e: unknown) {
-      const err = e as { code?: string };
-      if (err.code === "auth/email-already-in-use") {
-        setAuthError("Email sudah terdaftar. Gunakan 'Pendaftaran Saya' untuk masuk.");
-      } else {
-        setAuthError("Gagal membuat akun. Coba lagi.");
-      }
-    }
-  }
-
   function handleMemberDone() {
     const m = members[currentMemberIdx];
     if (!m.namaLengkap || !m.nomorTelpon || !m.umur || !m.alamatRumah) {
@@ -116,14 +93,11 @@ export default function RegistrationForm() {
     setAddingMore(false);
   }
 
-  // When done adding members, go to sponsorship step instead of payment
   function handleNoMore() {
     setAddingMore(false);
     setWantsToSponsor(null);
     setStep("sponsor");
   }
-
-  // ── Sponsorship handlers ───────────────────────────────────────────────────
 
   function handleSponsorNo() {
     setSponsorCount(0);
@@ -142,15 +116,14 @@ export default function RegistrationForm() {
     setUploading(true);
     setError("");
     try {
-      const { auth } = await import("@/lib/firebase");
-      const user = auth.currentUser;
-      if (!user) throw new Error("Not authenticated");
-      const tempId = `${user.uid}_${Date.now()}`;
+      const tempId = `reg_${Date.now()}`;
       const paymentUrl = await uploadPaymentProof(tempId, paymentFile);
       const qrDataUrl = await QRCode.toDataURL(tempId, { width: 300 });
+
+      // Denormalize main registrant fields for lookup without auth
       await createRegistration({
-        uid: user.uid,
-        email: user.email!,
+        mainNama: members[0].namaLengkap,
+        mainTelpon: members[0].nomorTelpon,
         status: "registered",
         qrCode: qrDataUrl,
         paymentProofUrl: paymentUrl,
@@ -167,9 +140,8 @@ export default function RegistrationForm() {
     }
   }
 
-  // Map step to index for the progress bar (exclude "done" from labels)
   const stepToIndex: Record<string, number> = {
-    auth: 0, member: 1, sponsor: 2, payment: 3,
+    member: 0, sponsor: 1, payment: 2,
   };
   const stepIndex = stepToIndex[step] ?? 0;
 
@@ -207,35 +179,6 @@ export default function RegistrationForm() {
         )}
 
         <div className="bg-white rounded-2xl shadow-sm p-6 sm:p-8">
-
-          {/* ── STEP: AUTH ── */}
-          {step === "auth" && (
-            <div className="space-y-4">
-              <div className="space-y-1 mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Buat Akun</h2>
-                <p className="text-sm text-gray-500">Akun ini digunakan untuk melihat status pendaftaran Anda.</p>
-                <p className="text-sm text-gray-500">Kalau ga ada email, masukin nomor telpon lalu tambah @gki.com</p>
-                <p className="text-sm text-gray-500">cth: 082182686717@gki.com</p>
-              </div>
-              <div className="space-y-3">
-                <input type="email" placeholder="Email" value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition" />
-                <input type="password" placeholder="Password (min. 6 karakter)" value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition" />
-                <input type="password" placeholder="Konfirmasi Password" value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAuth()}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition" />
-              </div>
-              {authError && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{authError}</p>}
-              <button onClick={handleAuth}
-                className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition text-sm">
-                Lanjut →
-              </button>
-            </div>
-          )}
 
           {/* ── STEP: MEMBER FORM ── */}
           {step === "member" && !addingMore && (
@@ -309,7 +252,6 @@ export default function RegistrationForm() {
                 </p>
               </div>
 
-              {/* Illustration / icon */}
               <div className="flex items-start gap-4 bg-amber-50 border border-amber-100 rounded-2xl p-4">
                 <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -325,7 +267,6 @@ export default function RegistrationForm() {
                 </div>
               </div>
 
-              {/* Yes / No buttons — only shown if not yet chosen */}
               {wantsToSponsor === null && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button onClick={() => setWantsToSponsor(false)}
@@ -339,7 +280,6 @@ export default function RegistrationForm() {
                 </div>
               )}
 
-              {/* If No → go straight to payment */}
               {wantsToSponsor === false && (
                 <div className="pt-2">
                   <button onClick={handleSponsorNo}
@@ -349,14 +289,12 @@ export default function RegistrationForm() {
                 </div>
               )}
 
-              {/* If Yes → ask how many */}
               {wantsToSponsor === true && (
                 <div className="space-y-4 pt-2">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                       Berapa orang yang ingin Anda sponsori?
                     </label>
-                    {/* Quick-pick buttons */}
                     <div className="flex gap-2 mb-3">
                       {[1, 2, 3, 4, 5].map((n) => (
                         <button key={n} type="button"
@@ -378,7 +316,6 @@ export default function RegistrationForm() {
                       />
                     </div>
 
-                    {/* Preview */}
                     {parseInt(sponsorCountInput) > 0 && (
                       <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-sm">
                         <p className="text-amber-800 font-semibold">
@@ -428,7 +365,6 @@ export default function RegistrationForm() {
                     <span className="font-medium text-gray-800">{formatRupiah(m.hargaKamar)}</span>
                   </div>
                 ))}
-                {/* Sponsorship line */}
                 {sponsorCount > 0 && (
                   <div className="flex justify-between text-sm text-amber-700 pt-1">
                     <span className="flex items-center gap-1">
@@ -495,6 +431,10 @@ export default function RegistrationForm() {
                 <p className="text-gray-500 text-sm mt-2 leading-relaxed">
                   Pendaftaran Anda telah diterima. QR code akan tersedia setelah admin menyetujui pendaftaran Anda.
                 </p>
+                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700 text-left">
+                  <p className="font-semibold mb-1">Cara cek status pendaftaran:</p>
+                  <p>Gunakan nama dan nomor telepon pendaftar utama di halaman <strong>Pendaftaran Saya</strong>.</p>
+                </div>
               </div>
               <button onClick={() => router.push("/retreatkeluarga2026/myregistration")}
                 className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition text-sm">
@@ -543,31 +483,17 @@ function MemberFields({
         onChange={(e) => onChange("alamatRumah", e.target.value)}
         rows={2} className={`${inputClass} resize-none`} />
 
-      {/* ── Kaos with size guide photos ───────────────────────────────────── */}
+      {/* Kaos size guide */}
       <div>
         <label className={labelClass}>Ukuran Kaos</label>
-
-        {/* Size guide photos */}
-        {/* <div className="grid grid-cols-2 gap-2 mb-3"> */}
-          <div className="rounded-xl overflow-hidden border border-gray-100 mb-5">
-            <img
-              src="/photo1.jpg"
-              alt="Panduan ukuran kaos (depan)"
-              className="w-full object-cover"
-            />
-            <p className="text-center text-xs text-gray-400 py-1.5 bg-gray-50">Ukuran Kaos</p>
-          </div>
-          {/* <div className="rounded-xl overflow-hidden border border-gray-100">
-            <img
-              src="/photo2.jpg"
-              alt="Panduan ukuran kaos (belakang)"
-              className="w-full object-cover"
-            />
-            <p className="text-center text-xs text-gray-400 py-1.5 bg-gray-50">Tampak Belakang</p>
-          </div> */}
-        {/* </div> */}
-
-        {/* Size picker */}
+        <div className="rounded-xl overflow-hidden border border-gray-100 mb-5">
+          <img
+            src="/photo1.jpg"
+            alt="Panduan ukuran kaos"
+            className="w-full object-cover"
+          />
+          <p className="text-center text-xs text-gray-400 py-1.5 bg-gray-50">Ukuran Kaos</p>
+        </div>
         <div className="flex gap-2 flex-wrap">
           {(["S", "M", "L", "XL", "XXL"] as KaosSize[]).map((s) => (
             <button key={s} type="button" onClick={() => onChange("ukuranKaos", s)}
