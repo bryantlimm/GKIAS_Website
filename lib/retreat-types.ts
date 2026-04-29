@@ -19,15 +19,16 @@ export interface RetreatMember {
 }
 
 export interface RetreatRegistration {
-  id?: string;
-  uid: string;
-  email: string;
-  createdAt: any;
-  status: RegistrationStatus;
-  qrCode: string;
-  paymentProofUrl: string;
-  totalAmount: number;
-  members: RetreatMember[];
+    id?: string;
+    uid: string;
+    email: string;
+    createdAt: any;
+    status: RegistrationStatus;
+    qrCode: string;
+    paymentProofUrl: string;
+    totalAmount: number;
+    members: RetreatMember[];
+    sponsorCount: number;
 }
 
 export interface RetreatConfig {

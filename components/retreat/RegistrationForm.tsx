@@ -214,6 +214,8 @@ export default function RegistrationForm() {
               <div className="space-y-1 mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Buat Akun</h2>
                 <p className="text-sm text-gray-500">Akun ini digunakan untuk melihat status pendaftaran Anda.</p>
+                <p className="text-sm text-gray-500">Kalau ga ada email, masukin nomor telpon lalu tambah @gki.com</p>
+                <p className="text-sm text-gray-500">cth: 082182686717@gki.com</p>
               </div>
               <div className="space-y-3">
                 <input type="email" placeholder="Email" value={email}
