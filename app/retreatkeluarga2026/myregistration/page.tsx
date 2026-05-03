@@ -14,7 +14,7 @@ const STATUS_LABELS: Record<string, string> = {
   approved: "Disetujui",
   checked_in: "Check In",
 };
-
+// debug
 export default function MyRegistrationPage() {
   const router = useRouter();
 
