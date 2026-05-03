@@ -389,7 +389,7 @@ export default function RegistrationForm() {
                   Transfer ke:
                 </p>
                 <p className="text-blue-700">Bank BCA — 7641380427</p>
-                <p className="text-blue-700">a.n. GKIA Alam Sutera</p>
+                <p className="text-blue-700">a.n. Yuyun Anggraini</p>
               </div>
 
               {/* Upload */}
