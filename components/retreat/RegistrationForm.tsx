@@ -388,7 +388,7 @@ export default function RegistrationForm() {
                   </svg>
                   Transfer ke:
                 </p>
-                <p className="text-blue-700">Bank BCA — 1234567890</p>
+                <p className="text-blue-700">Bank BCA — 7641380427</p>
                 <p className="text-blue-700">a.n. GKIA Alam Sutera</p>
               </div>
 
