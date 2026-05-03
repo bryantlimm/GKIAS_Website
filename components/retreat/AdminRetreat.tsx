@@ -440,7 +440,7 @@ export default function AdminRetreat() {
                           {main.namaLengkap}
                         </p>
                         <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {reg.email} | {main.nomorTelpon}
+                          | {main.nomorTelpon}
                         </p>
                       </div>
 
