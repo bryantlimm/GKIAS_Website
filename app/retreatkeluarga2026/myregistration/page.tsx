@@ -86,7 +86,7 @@ export default function MyRegistrationPage() {
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-semibold text-500 uppercase tracking-wide mb-1.5">
                 Nama Lengkap Pendaftar Utama
               </label>
               <input
