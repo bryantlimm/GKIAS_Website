@@ -94,7 +94,7 @@ export default function MyRegistrationPage() {
                 placeholder="Nama sesuai saat pendaftaran"
                 value={namaInput}
                 onChange={(e) => setNamaInput(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+                className="w-full border border-gray-200 text-gray-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
               />
             </div>
             <div>
@@ -107,7 +107,7 @@ export default function MyRegistrationPage() {
                 value={telponInput}
                 onChange={(e) => setTelponInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+                className="w-full border border-gray-200 text-gray-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
               />
             </div>
           </div>
