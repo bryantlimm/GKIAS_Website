@@ -30,6 +30,7 @@ export interface RetreatRegistration {
   totalAmount: number;
   sponsorCount: number;
   members: RetreatMember[];
+  paymentProofUploaded?: boolean;
 }
 
 export interface RetreatConfig {

@@ -50,7 +50,6 @@ export default function RegistrationForm() {
   const [members, setMembers] = useState<RetreatMember[]>([emptyMember(true)]);
   const [currentMemberIdx, setCurrentMemberIdx] = useState(0);
 
-  // Start directly at member step — no auth required
   const [step, setStep] = useState<"member" | "sponsor" | "payment" | "done">("member");
   const [addingMore, setAddingMore] = useState(false);
 
@@ -59,6 +58,7 @@ export default function RegistrationForm() {
   const [sponsorCountInput, setSponsorCountInput] = useState("1");
   const [sponsorCount, setSponsorCount] = useState(0);
 
+  // Payment — now optional
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -112,21 +112,26 @@ export default function RegistrationForm() {
   }
 
   async function handleSubmit() {
-    if (!paymentFile) { setError("Harap upload bukti pembayaran."); return; }
     setUploading(true);
     setError("");
     try {
       const tempId = `reg_${Date.now()}`;
-      const paymentUrl = await uploadPaymentProof(tempId, paymentFile);
+
+      // Upload proof only if provided
+      let paymentUrl = "";
+      if (paymentFile) {
+        paymentUrl = await uploadPaymentProof(tempId, paymentFile);
+      }
+
       const qrDataUrl = await QRCode.toDataURL(tempId, { width: 300 });
 
-      // Denormalize main registrant fields for lookup without auth
       await createRegistration({
         mainNama: members[0].namaLengkap,
         mainTelpon: members[0].nomorTelpon,
         status: "registered",
         qrCode: qrDataUrl,
-        paymentProofUrl: paymentUrl,
+        paymentProofUrl: paymentUrl,         // empty string if skipped
+        paymentProofUploaded: !!paymentFile, // convenience flag
         totalAmount: calcTotal(members, sponsorCount),
         sponsorCount,
         members,
@@ -392,11 +397,15 @@ export default function RegistrationForm() {
                 <p className="text-blue-700">a.n. Yuyun Anggraini</p>
               </div>
 
-              {/* Upload */}
+              {/* Upload — now optional */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Upload Bukti Pembayaran
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Bukti Pembayaran
+                  </label>
+                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Opsional</span>
+                </div>
+
                 <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={paymentFile ? "#3b82f6" : "#9ca3af"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
@@ -405,16 +414,51 @@ export default function RegistrationForm() {
                   <p className={`text-sm mt-2 font-medium ${paymentFile ? "text-blue-600" : "text-gray-400"}`}>
                     {paymentFile ? paymentFile.name : "Pilih foto atau PDF"}
                   </p>
+                  {!paymentFile && (
+                    <p className="text-xs text-gray-400 mt-0.5">Bisa diupload nanti di halaman pendaftaran saya</p>
+                  )}
                   <input type="file" accept="image/*,application/pdf" className="hidden"
                     onChange={(e) => setPaymentFile(e.target.files?.[0] || null)} />
                 </label>
+
+                {paymentFile && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentFile(null)}
+                    className="mt-2 text-xs text-gray-400 hover:text-red-500 transition flex items-center gap-1"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Hapus file
+                  </button>
+                )}
+
+                {/* Skip reminder */}
+                {!paymentFile && (
+                  <div className="mt-3 flex items-start gap-2.5 bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 flex-shrink-0">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <p className="text-xs text-yellow-700 leading-relaxed">
+                      Jika belum transfer, Anda bisa upload bukti pembayaran nanti melalui halaman <strong>Pendaftaran Saya</strong>. Pendaftaran Anda tetap akan diproses.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
+
               <button onClick={handleSubmit} disabled={uploading}
                 className="w-full bg-green-600 text-white py-3.5 rounded-xl font-semibold hover:bg-green-700 active:scale-[0.98] transition text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                {uploading ? "Menyimpan..." : "Submit Pendaftaran ✓"}
+                {uploading ? "Menyimpan..." : paymentFile ? "Submit Pendaftaran ✓" : "Submit Tanpa Bukti →"}
               </button>
+
+              {!paymentFile && (
+                <p className="text-center text-xs text-gray-400">
+                  Anda dapat menambahkan bukti pembayaran kapan saja sebelum disetujui admin.
+                </p>
+              )}
             </div>
           )}
 
@@ -431,9 +475,10 @@ export default function RegistrationForm() {
                 <p className="text-gray-500 text-sm mt-2 leading-relaxed">
                   Pendaftaran Anda telah diterima. QR code akan tersedia setelah admin menyetujui pendaftaran Anda.
                 </p>
-                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700 text-left">
-                  <p className="font-semibold mb-1">Cara cek status pendaftaran:</p>
+                <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700 text-left space-y-2">
+                  <p className="font-semibold">Cara cek status pendaftaran:</p>
                   <p>Gunakan nama dan nomor telepon pendaftar utama di halaman <strong>Pendaftaran Saya</strong>.</p>
+                  <p className="text-blue-600 text-xs">Jika belum upload bukti pembayaran, Anda bisa melakukannya di halaman yang sama.</p>
                 </div>
               </div>
               <button onClick={() => router.push("/retreatkeluarga2026/myregistration")}
@@ -470,8 +515,9 @@ function MemberFields({
 
   const inputClass = "w-full border border-gray-200 text-gray-500 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition";
   const labelClass = "block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2";
-  const cssClassFocus = "border-blue-600 bg-blue-600";
-  const cssClassUnfocus = "border-gray-200 text-600 hover:border-blue-300";
+  const cssClassFocus = "border-blue-600 bg-blue-600 text-white";
+  const cssClassUnfocus = "border-gray-200 text-gray-600 hover:border-blue-300";
+
   return (
     <div className="space-y-4">
       <input type="text" placeholder="Nama Lengkap" value={member.namaLengkap}

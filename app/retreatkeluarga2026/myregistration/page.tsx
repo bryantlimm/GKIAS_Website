@@ -1,10 +1,11 @@
 // retreatkeluarga2026/myregistration/page.tsx
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import { uploadPaymentProof, updatePaymentProof } from "@/lib/firebase"; // add updatePaymentProof to your firebase lib
 import type { RetreatRegistration } from "@/lib/retreat-types";
 import { LABEL_TIPE_KAMAR } from "@/lib/retreat-types";
 
@@ -14,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   approved: "Disetujui",
   checked_in: "Check In",
 };
-// debug
+
 export default function MyRegistrationPage() {
   const router = useRouter();
 
@@ -27,49 +28,108 @@ export default function MyRegistrationPage() {
   // Result state
   const [registration, setRegistration] = useState<RetreatRegistration | null>(null);
 
+  // Payment proof upload state
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [uploadingProof, setUploadingProof] = useState(false);
+  const [proofSuccess, setProofSuccess] = useState(false);
+  const [proofError, setProofError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   async function handleLookup() {
     const nama = namaInput.trim();
     const telpon = telponInput.trim();
 
     if (!nama || !telpon) {
-        setLookupError("Harap isi nama lengkap dan nomor telepon.");
-        return;
+      setLookupError("Harap isi nama lengkap dan nomor telepon.");
+      return;
     }
 
     setLoading(true);
     setLookupError("");
 
     try {
-        const q = query(
+      const q = query(
         collection(db, "retreat2026_registrations"),
         where("mainNama", "==", nama)
-        );
-        const snap = await getDocs(q);
+      );
+      const snap = await getDocs(q);
 
-        // Filter by phone on the client side
-        const match = snap.docs.find(
+      const match = snap.docs.find(
         (d) => d.data().mainTelpon === telpon
-        );
+      );
 
-        if (!match) {
+      if (!match) {
         setLookupError("Data tidak ditemukan. Pastikan nama dan nomor telepon sesuai.");
         setRegistration(null);
-        } else {
+      } else {
         setRegistration({ id: match.id, ...match.data() } as RetreatRegistration);
-        }
+        // Reset proof upload state on new lookup
+        setProofFile(null);
+        setProofPreview(null);
+        setProofSuccess(false);
+        setProofError("");
+      }
     } catch (e) {
-        console.error(e);
-        setLookupError("Terjadi kesalahan. Coba lagi.");
+      console.error(e);
+      setLookupError("Terjadi kesalahan. Coba lagi.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    }
+  }
 
   function handleReset() {
     setRegistration(null);
     setNamaInput("");
     setTelponInput("");
     setLookupError("");
+    setProofFile(null);
+    setProofPreview(null);
+    setProofSuccess(false);
+    setProofError("");
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProofFile(file);
+    setProofSuccess(false);
+    setProofError("");
+
+    // Generate preview for images
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setProofPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setProofPreview(null); // PDF — no preview
+    }
+  }
+
+  async function handleUploadProof() {
+    if (!proofFile || !registration) return;
+    setUploadingProof(true);
+    setProofError("");
+    setProofSuccess(false);
+
+    try {
+      const newUrl = await uploadPaymentProof(registration.id, proofFile);
+      // Update Firestore record
+      await updatePaymentProof(registration.id, newUrl);
+      // Update local state
+      setRegistration((prev) =>
+        prev ? { ...prev, paymentProofUrl: newUrl, paymentProofUploaded: true } : prev
+      );
+      setProofFile(null);
+      setProofPreview(null);
+      setProofSuccess(true);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (e) {
+      console.error(e);
+      setProofError("Gagal mengupload bukti. Coba lagi.");
+    } finally {
+      setUploadingProof(false);
+    }
   }
 
   // ── Lookup form ────────────────────────────────────────────────────────────
@@ -80,13 +140,13 @@ export default function MyRegistrationPage() {
           <div className="space-y-1">
             <h2 className="text-2xl font-bold text-gray-800">Cek Pendaftaran</h2>
             <p className="text-sm text-gray-500">
-              Masukkan nama lengkap dan nomor telepon pendaftar utama.
+              Masukkan nama lengkap dan nomor telepon pendaftar utama. (case sensitive)
             </p>
           </div>
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                 Nama Lengkap Pendaftar Utama
               </label>
               <input
@@ -141,6 +201,10 @@ export default function MyRegistrationPage() {
   const currentStatusIdx = STATUS_STEPS.indexOf(
     registration.status as (typeof STATUS_STEPS)[number]
   );
+
+  // Show upload section when not yet checked in
+  const canUploadProof = registration.status === "registered" || registration.status === "approved";
+  const hasExistingProof = !!registration.paymentProofUrl;
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -201,6 +265,156 @@ export default function MyRegistrationPage() {
               className="mx-auto"
             />
             <p className="text-xs text-gray-400">Tunjukkan QR ini saat check-in</p>
+          </div>
+        )}
+
+        {/* ── PAYMENT PROOF UPLOAD / REPLACE ── */}
+        {canUploadProof && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-500">Bukti Pembayaran</p>
+              {hasExistingProof && (
+                <span className="text-xs bg-green-100 text-green-700 font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Sudah diupload
+                </span>
+              )}
+              {!hasExistingProof && (
+                <span className="text-xs bg-red-100 text-red-600 font-semibold px-2.5 py-1 rounded-full">
+                  Belum diupload
+                </span>
+              )}
+            </div>
+
+            {/* Show existing proof thumbnail */}
+            {hasExistingProof && !proofPreview && (
+              <div className="relative rounded-xl overflow-hidden border border-gray-100">
+                <img
+                  src={registration.paymentProofUrl}
+                  alt="Bukti pembayaran"
+                  className="w-full max-h-48 object-cover"
+                  onError={(e) => {
+                    // Fallback for PDFs or broken images
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/40 to-transparent px-3 py-2">
+                  <p className="text-white text-xs font-medium">Bukti pembayaran saat ini</p>
+                </div>
+              </div>
+            )}
+
+            {/* New file preview */}
+            {proofPreview && (
+              <div className="relative rounded-xl overflow-hidden border-2 border-blue-200">
+                <img src={proofPreview} alt="Preview" className="w-full max-h-48 object-cover" />
+                <div className="absolute top-2 right-2">
+                  <button
+                    onClick={() => {
+                      setProofFile(null);
+                      setProofPreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="w-7 h-7 bg-white rounded-full shadow flex items-center justify-center hover:bg-red-50 transition"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-900/50 to-transparent px-3 py-2">
+                  <p className="text-white text-xs font-medium">{proofFile?.name}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Non-image file indicator */}
+            {proofFile && !proofPreview && (
+              <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-blue-700 truncate">{proofFile.name}</p>
+                  <p className="text-xs text-blue-500">{(proofFile.size / 1024).toFixed(0)} KB</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setProofFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  className="text-blue-400 hover:text-red-500 transition"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {/* File picker */}
+            <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer transition text-sm font-semibold
+              ${proofFile
+                ? "border-blue-300 text-blue-600 bg-blue-50 hover:bg-blue-100"
+                : "border-gray-300 text-gray-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600"
+              }`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+              </svg>
+              {proofFile
+                ? "Ganti file"
+                : hasExistingProof
+                  ? "Ganti bukti pembayaran"
+                  : "Pilih foto atau PDF"
+              }
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </label>
+
+            {/* Success message */}
+            {proofSuccess && (
+              <div className="flex items-center gap-2.5 bg-green-50 border border-green-100 rounded-xl px-4 py-3 text-sm text-green-700">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span className="font-medium">Bukti pembayaran berhasil diupload!</span>
+              </div>
+            )}
+
+            {/* Error message */}
+            {proofError && (
+              <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{proofError}</p>
+            )}
+
+            {/* Upload button — only shown when a new file is selected */}
+            {proofFile && (
+              <button
+                onClick={handleUploadProof}
+                disabled={uploadingProof}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 active:scale-[0.98] transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploadingProof
+                  ? "Mengupload..."
+                  : hasExistingProof
+                    ? "Simpan Bukti Baru ✓"
+                    : "Upload Bukti Pembayaran ✓"
+                }
+              </button>
+            )}
+
+            {!hasExistingProof && !proofFile && (
+              <p className="text-xs text-gray-400 text-center">
+                Admin membutuhkan bukti transfer untuk menyetujui pendaftaran Anda.
+              </p>
+            )}
           </div>
         )}
 

@@ -120,3 +120,8 @@ export async function sendRetreatPasswordReset(email: string) {
 export async function signOutUser() {
   return signOut(auth);
 }
+
+export async function updatePaymentProof(regId: string, url: string) {
+  const ref = doc(db, "retreat2026_registrations", regId);
+  await updateDoc(ref, { paymentProofUrl: url, paymentProofUploaded: true });
+}
