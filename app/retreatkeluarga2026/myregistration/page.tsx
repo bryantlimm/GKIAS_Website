@@ -51,12 +51,12 @@ export default function MyRegistrationPage() {
     try {
       const q = query(
         collection(db, "retreat2026_registrations"),
-        where("mainNama", "==", nama)
+        where("mainTelpon", "==", telpon)
       );
       const snap = await getDocs(q);
 
       const match = snap.docs.find(
-        (d) => d.data().mainTelpon === telpon
+        (d) => d.data().mainNama?.toLowerCase() === nama.toLowerCase()
       );
 
       if (!match) {
@@ -140,7 +140,7 @@ export default function MyRegistrationPage() {
           <div className="space-y-1">
             <h2 className="text-2xl font-bold text-gray-800">Cek Pendaftaran</h2>
             <p className="text-sm text-gray-500">
-              Masukkan nama lengkap dan nomor telepon pendaftar utama. (case sensitive)
+              Masukkan nama lengkap dan nomor telepon pendaftar utama.
             </p>
           </div>
 
