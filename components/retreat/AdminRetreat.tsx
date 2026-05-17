@@ -540,16 +540,22 @@ export default function AdminRetreat() {
 
                         {/* Bukti button */}
                         <button
-                          onClick={() => setPaymentProofUrl(reg.paymentProofUrl)}
+                          onClick={() => reg.paymentProofUrl && setPaymentProofUrl(reg.paymentProofUrl)}
+                          title={reg.paymentProofUrl ? "Lihat bukti pembayaran" : "Bukti belum diupload"}
                           style={{
                             display: "flex", alignItems: "center", gap: 5,
-                            padding: "8px 14px", background: "#f3f4f6", color: "#6b7280",
-                            border: "1.5px solid #e5e7eb", borderRadius: 7,
-                            cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
+                            padding: "8px 14px",
+                            background: reg.paymentProofUrl ? "#f3f4f6" : "#fef2f2",
+                            color: reg.paymentProofUrl ? "#6b7280" : "#ef4444",
+                            border: `1.5px solid ${reg.paymentProofUrl ? "#e5e7eb" : "#fecaca"}`,
+                            borderRadius: 7,
+                            cursor: reg.paymentProofUrl ? "pointer" : "default",
+                            fontSize: 12, fontWeight: 700, fontFamily: "inherit",
                             minHeight: 36,
                           }}
                         >
-                          <ReceiptIcon /> Bukti
+                          <ReceiptIcon />
+                          {reg.paymentProofUrl ? "Bukti" : "Bukti ✗"}
                         </button>
 
                         {/* Approve / Check-in / Hadir */}
