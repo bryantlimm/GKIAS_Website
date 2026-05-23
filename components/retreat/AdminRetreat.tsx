@@ -12,6 +12,7 @@ import {
   updateMemberRoom,
   updateMemberInfo,
   uploadRetreatImage,
+  mergeRegistrations,
 } from "@/lib/firebase";
 import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
 import { onAuthStateChanged } from "firebase/auth";
@@ -21,8 +22,6 @@ const QRScanner = dynamic(() => import("./QRScanner"), { ssr: false });
 
 type AdminTab = "list" | "details";
 
-// ── Responsive style helpers ───────────────────────────────────────────────────
-// We use a simple hook to detect mobile (< 640px) via window.innerWidth
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -113,6 +112,13 @@ const EditIcon = () => (
   </svg>
 );
 
+const MergeIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 7h8M8 12h8M8 17h4"/>
+    <path d="M15 14l3 3-3 3"/>
+  </svg>
+);
+
 const getStatusStyle = (status: string): { bg: string; color: string; border: string } => {
   switch (status) {
     case "registered":   return { bg: "#fefce8", color: "#ca8a04", border: "#fde68a" };
@@ -185,6 +191,13 @@ export default function AdminRetreat() {
     ukuranKaos: "M",
     transportasi: "bus",
   });
+
+  // ── Merge state ──────────────────────────────────────────────────────────────
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSelected, setMergeSelected] = useState<string[]>([]);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeMainId, setMergeMainId] = useState<string | null>(null);
+  const [mergeSaving, setMergeSaving] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -290,12 +303,7 @@ export default function AdminRetreat() {
   function closeEditMember() {
     setEditingRegId(null);
     setEditingMemberIdx(null);
-    setEditFormData({
-      namaLengkap: "",
-      nomorTelpon: "",
-      ukuranKaos: "M",
-      transportasi: "bus",
-    });
+    setEditFormData({ namaLengkap: "", nomorTelpon: "", ukuranKaos: "M", transportasi: "bus" });
   }
 
   async function handleSaveConfig() {
@@ -313,16 +321,29 @@ export default function AdminRetreat() {
     await updateRetreatConfig({ [key]: url });
   }
 
+  // ── Merge handler ────────────────────────────────────────────────────────────
+  async function handleMerge() {
+    if (!mergeMainId || mergeSelected.length !== 2) return;
+    const secondaryId = mergeSelected.find((id) => id !== mergeMainId)!;
+    const mainReg = registrations.find((r) => r.id === mergeMainId)!;
+    const secondaryReg = registrations.find((r) => r.id === secondaryId)!;
+
+    setMergeSaving(true);
+    await mergeRegistrations(mergeMainId, secondaryId, mainReg, secondaryReg);
+    const fresh = await getAllRegistrations();
+    setRegistrations(fresh);
+    setMergeSaving(false);
+    setMergeMode(false);
+    setMergeSelected([]);
+    setShowMergeModal(false);
+    setMergeMainId(null);
+  }
+
   function handleExportXLSX() {
-    if (registrations.length === 0) {
-      alert("Tidak ada data untuk diexport");
-      return;
-    }
+    if (registrations.length === 0) { alert("Tidak ada data untuk diexport"); return; }
     const transportasiMap: Record<string, string> = { bus: "Bus", mobil_sendiri: "Mobil Sendiri" };
     const statusMap: Record<string, string> = {
-      registered: "Terdaftar",
-      approved: "Disetujui",
-      checked_in: "Checked In",
+      registered: "Terdaftar", approved: "Disetujui", checked_in: "Checked In",
     };
     const exportData = registrations.flatMap((reg) =>
       reg.members.map((member) => ({
@@ -397,9 +418,33 @@ export default function AdminRetreat() {
           ))}
         </div>
 
-        {/* Scan and Export buttons */}
+        {/* Action buttons */}
         {tab === "list" && (
           <div style={{ display: "flex", gap: 8 }}>
+            {/* Merge toggle */}
+            <button
+              onClick={() => {
+                setMergeMode((prev) => {
+                  if (prev) setMergeSelected([]);
+                  return !prev;
+                });
+              }}
+              style={{
+                flex: 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                padding: "10px 16px", borderRadius: 8,
+                border: mergeMode ? "1.5px solid #f97316" : "1.5px solid #e8ecf0",
+                background: mergeMode ? "#fff7ed" : "#f8fafc",
+                color: mergeMode ? "#ea580c" : "#475569",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                transition: "all 0.15s",
+                minHeight: 44,
+              }}
+            >
+              <MergeIcon />
+              {mergeMode ? "Batal" : "Merge"}
+            </button>
+
             <button
               onClick={() => { setShowScanner(true); setScanMsg(""); setScannedReg(null); }}
               style={{
@@ -409,7 +454,7 @@ export default function AdminRetreat() {
                 background: "#eff3ff", color: "#3b5bdb",
                 fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
                 transition: "all 0.15s",
-                minHeight: 44, // touch-friendly
+                minHeight: 44,
               }}
             >
               <ScanIcon />
@@ -437,6 +482,46 @@ export default function AdminRetreat() {
       {/* ── TAB: REGISTRATION LIST ── */}
       {tab === "list" && (
         <div>
+          {/* Merge mode banner */}
+          {mergeMode && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: 12, padding: "12px 16px",
+              background: "#fff7ed", border: "1.5px solid #fed7aa",
+              borderRadius: 10, marginBottom: 12, flexWrap: "wrap",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {/* <span style={{ fontSize: 20 }}>🔗</span> */}
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#9a3412" }}>
+                    Mode Merge Aktif
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#c2410c" }}>
+                    {mergeSelected.length === 0
+                      ? "Pilih 2 pendaftaran untuk digabung"
+                      : mergeSelected.length === 1
+                      ? "1 dipilih — pilih 1 lagi"
+                      : "2 dipilih — siap digabung"}
+                  </p>
+                </div>
+              </div>
+              {mergeSelected.length === 2 && (
+                <button
+                  onClick={() => { setShowMergeModal(true); setMergeMainId(null); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "10px 18px", background: "#ea580c", color: "#fff",
+                    border: "none", borderRadius: 8,
+                    fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                    minHeight: 40,
+                  }}
+                >
+                  <MergeIcon /> Gabungkan
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Count badges */}
           {registrations.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
@@ -474,30 +559,62 @@ export default function AdminRetreat() {
                 const { color, initials } = getAvatar(main.namaLengkap);
                 const statusStyle = getStatusStyle(reg.status);
                 const isExpanded = expandedId === reg.id;
+                const isSelectedForMerge = mergeSelected.includes(reg.id!);
 
                 return (
                   <div key={reg.id}>
-                    {/* ── Card: tappable header row ── */}
+                    {/* ── Card ── */}
                     <div
                       style={{
-                        border: "1.5px solid #e8ecf0",
+                        border: isSelectedForMerge
+                          ? "2px solid #ea580c"
+                          : "1.5px solid #e8ecf0",
                         borderRadius: isExpanded ? "10px 10px 0 0" : 10,
-                        background: "#fff",
+                        background: isSelectedForMerge ? "#fff7ed" : "#fff",
                         overflow: "hidden",
+                        transition: "border-color 0.15s, background 0.15s",
                       }}
                     >
-                      {/* Top section: avatar + name + status + chevron */}
+                      {/* Top section */}
                       <div
-                        onClick={() => setExpandedId(isExpanded ? null : reg.id!)}
+                        onClick={() => {
+                          if (mergeMode) {
+                            // In merge mode, clicking the card toggles selection
+                            setMergeSelected((prev) => {
+                              if (prev.includes(reg.id!)) return prev.filter((id) => id !== reg.id);
+                              if (prev.length >= 2) return prev;
+                              return [...prev, reg.id!];
+                            });
+                          } else {
+                            setExpandedId(isExpanded ? null : reg.id!);
+                          }
+                        }}
                         style={{
                           width: "100%",
                           display: "flex", alignItems: "center", gap: 12,
                           padding: "14px 14px 10px",
                           background: "transparent", border: "none",
                           cursor: "pointer", textAlign: "left",
-                          minHeight: 56, // touch-friendly
+                          minHeight: 56,
                         }}
                       >
+                        {/* Merge checkbox — shown when merge mode is active */}
+                        {mergeMode && (
+                          <div style={{
+                            width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                            border: isSelectedForMerge ? "2px solid #ea580c" : "2px solid #cbd5e1",
+                            background: isSelectedForMerge ? "#ea580c" : "#fff",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transition: "all 0.15s",
+                          }}>
+                            {isSelectedForMerge && (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                            )}
+                          </div>
+                        )}
+
                         {/* Avatar */}
                         <div style={{
                           width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
@@ -523,23 +640,22 @@ export default function AdminRetreat() {
                           </p>
                         </div>
 
-                        {/* Edit button for main member */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditMember(reg.id!, 0, main);
-                          }}
-                          title="Edit informasi peserta"
-                          style={{
-                            flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
-                            padding: "6px 10px", background: "#f1f5f9", color: "#64748b",
-                            border: "1.5px solid #e2e8f0", borderRadius: 6,
-                            cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-                            minHeight: 32,
-                          }}
-                        >
-                          <EditIcon />
-                        </button>
+                        {/* Edit button — hidden in merge mode */}
+                        {!mergeMode && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEditMember(reg.id!, 0, main); }}
+                            title="Edit informasi peserta"
+                            style={{
+                              flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+                              padding: "6px 10px", background: "#f1f5f9", color: "#64748b",
+                              border: "1.5px solid #e2e8f0", borderRadius: 6,
+                              cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+                              minHeight: 32,
+                            }}
+                          >
+                            <EditIcon />
+                          </button>
+                        )}
 
                         {/* Status badge */}
                         <div style={{
@@ -552,134 +668,113 @@ export default function AdminRetreat() {
                           {getStatusLabel(reg.status)}
                         </div>
 
-                        {/* Chevron */}
-                        <div style={{
-                          flexShrink: 0, color: "#94a3b8",
-                          transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
-                          transition: "transform 0.15s",
-                        }}>
-                          <ChevronDownIcon />
-                        </div>
-                      </div>
-
-                      {/* Bottom section: badges + room + action buttons */}
-                      <div style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "0 14px 12px",
-                        borderTop: "1px solid #f1f5f9",
-                      }}>
-                        {/* Transport badge */}
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 5,
-                          background: "#f1f5f9", borderRadius: 6, padding: "5px 10px",
-                        }}>
-                          <span style={{ color: "#64748b" }}><BusIcon /></span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
-                            {main.transportasi === "bus" ? "Bus" : "Mobil"}
-                          </span>
-                        </div>
-
-                        {/* Kaos badge */}
-                        <div style={{
-                          background: "#f8fafc", borderRadius: 6,
-                          padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "#475569",
-                        }}>
-                          Kaos {main.ukuranKaos}
-                        </div>
-
-                        {/* Room input */}
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 5,
-                          background: "#f1f5f9", borderRadius: 6, padding: "5px 10px",
-                        }}>
-                          <span style={{ color: "#64748b" }}><BedIcon /></span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>
-                            ({getRoomCapacity(main.tipeKamar)})
-                          </span>
-                          <input
-                            type="text"
-                            placeholder="N/A"
-                            defaultValue={main.kamar}
-                            onBlur={(e) => handleRoomChange(reg.id!, 0, e.target.value, reg.members)}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                              border: "1.5px solid #e8ecf0", borderRadius: 6,
-                              padding: "3px 8px", fontSize: 12, width: 64,
-                              fontFamily: "inherit", outline: "none",
-                              background: "#fff",
-                            }}
-                          />
-                        </div>
-
-                        {/* Spacer to push action buttons right on wide screens */}
-                        <div style={{ flex: 1 }} />
-
-                        {/* Bukti button */}
-                        <button
-                          onClick={() => reg.paymentProofUrl && setPaymentProofUrl(reg.paymentProofUrl)}
-                          title={reg.paymentProofUrl ? "Lihat bukti pembayaran" : "Bukti belum diupload"}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 5,
-                            padding: "8px 14px",
-                            background: reg.paymentProofUrl ? "#f3f4f6" : "#fef2f2",
-                            color: reg.paymentProofUrl ? "#6b7280" : "#ef4444",
-                            border: `1.5px solid ${reg.paymentProofUrl ? "#e5e7eb" : "#fecaca"}`,
-                            borderRadius: 7,
-                            cursor: reg.paymentProofUrl ? "pointer" : "default",
-                            fontSize: 12, fontWeight: 700, fontFamily: "inherit",
-                            minHeight: 36,
-                          }}
-                        >
-                          <ReceiptIcon />
-                          {reg.paymentProofUrl ? "Bukti" : "Bukti ✗"}
-                        </button>
-
-                        {/* Approve / Check-in / Hadir */}
-                        {reg.status === "registered" && (
-                          <button
-                            onClick={() => setConfirmApprove(reg.id!)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 5,
-                              padding: "8px 14px", background: "#f0fdf4", color: "#16a34a",
-                              border: "1.5px solid #bbf7d0", borderRadius: 7,
-                              cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
-                              minHeight: 36,
-                            }}
-                          >
-                            <CheckIcon /> Approve
-                          </button>
-                        )}
-                        {reg.status === "approved" && (
-                          <button
-                            onClick={() => setConfirmCheckin(reg.id!)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 5,
-                              padding: "8px 14px", background: "#eff6ff", color: "#2563eb",
-                              border: "1.5px solid #bfdbfe", borderRadius: 7,
-                              cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit",
-                              minHeight: 36,
-                            }}
-                          >
-                            <CheckIcon /> Check In
-                          </button>
-                        )}
-                        {reg.status === "checked_in" && (
-                          <span style={{
-                            fontSize: 12, fontWeight: 700, color: "#16a34a",
-                            display: "flex", alignItems: "center", gap: 5,
-                            padding: "8px 4px",
+                        {/* Chevron — hidden in merge mode */}
+                        {!mergeMode && (
+                          <div style={{
+                            flexShrink: 0, color: "#94a3b8",
+                            transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.15s",
                           }}>
-                            <CheckIcon /> Hadir
-                          </span>
+                            <ChevronDownIcon />
+                          </div>
                         )}
                       </div>
+
+                      {/* Bottom section — hidden in merge mode for cleanliness */}
+                      {!mergeMode && (
+                        <div style={{
+                          display: "flex", flexWrap: "wrap", alignItems: "center",
+                          gap: 8, padding: "0 14px 12px",
+                          borderTop: "1px solid #f1f5f9",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#f1f5f9", borderRadius: 6, padding: "5px 10px" }}>
+                            <span style={{ color: "#64748b" }}><BusIcon /></span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
+                              {main.transportasi === "bus" ? "Bus" : "Mobil"}
+                            </span>
+                          </div>
+                          <div style={{ background: "#f8fafc", borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "#475569" }}>
+                            Kaos {main.ukuranKaos}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, background: "#f1f5f9", borderRadius: 6, padding: "5px 10px" }}>
+                            <span style={{ color: "#64748b" }}><BedIcon /></span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>({getRoomCapacity(main.tipeKamar)})</span>
+                            <input
+                              type="text"
+                              placeholder="N/A"
+                              defaultValue={main.kamar}
+                              onBlur={(e) => handleRoomChange(reg.id!, 0, e.target.value, reg.members)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                border: "1.5px solid #e8ecf0", borderRadius: 6,
+                                padding: "3px 8px", fontSize: 12, width: 64,
+                                fontFamily: "inherit", outline: "none", background: "#fff",
+                              }}
+                            />
+                          </div>
+                          <div style={{ flex: 1 }} />
+                          <button
+                            onClick={() => reg.paymentProofUrl && setPaymentProofUrl(reg.paymentProofUrl)}
+                            title={reg.paymentProofUrl ? "Lihat bukti pembayaran" : "Bukti belum diupload"}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 5,
+                              padding: "8px 14px",
+                              background: reg.paymentProofUrl ? "#f3f4f6" : "#fef2f2",
+                              color: reg.paymentProofUrl ? "#6b7280" : "#ef4444",
+                              border: `1.5px solid ${reg.paymentProofUrl ? "#e5e7eb" : "#fecaca"}`,
+                              borderRadius: 7, cursor: reg.paymentProofUrl ? "pointer" : "default",
+                              fontSize: 12, fontWeight: 700, fontFamily: "inherit", minHeight: 36,
+                            }}
+                          >
+                            <ReceiptIcon />
+                            {reg.paymentProofUrl ? "Bukti" : "Bukti ✗"}
+                          </button>
+                          {reg.status === "registered" && (
+                            <button
+                              onClick={() => setConfirmApprove(reg.id!)}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 5,
+                                padding: "8px 14px", background: "#f0fdf4", color: "#16a34a",
+                                border: "1.5px solid #bbf7d0", borderRadius: 7,
+                                cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit", minHeight: 36,
+                              }}
+                            >
+                              <CheckIcon /> Approve
+                            </button>
+                          )}
+                          {reg.status === "approved" && (
+                            <button
+                              onClick={() => setConfirmCheckin(reg.id!)}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 5,
+                                padding: "8px 14px", background: "#eff6ff", color: "#2563eb",
+                                border: "1.5px solid #bfdbfe", borderRadius: 7,
+                                cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit", minHeight: 36,
+                              }}
+                            >
+                              <CheckIcon /> Check In
+                            </button>
+                          )}
+                          {reg.status === "checked_in" && (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", display: "flex", alignItems: "center", gap: 5, padding: "8px 4px" }}>
+                              <CheckIcon /> Hadir
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Merge mode: member count hint */}
+                      {mergeMode && (
+                        <div style={{ padding: "0 14px 12px", borderTop: "1px solid #f1f5f9" }}>
+                          <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>
+                            {reg.members.length} anggota
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* ── Expanded: sub-members ── */}
-                    {isExpanded && (
+                    {/* ── Expanded: sub-members — hidden in merge mode ── */}
+                    {isExpanded && !mergeMode && (
                       <div style={{
                         padding: "16px", background: "#f8fafc",
                         borderLeft: "1.5px solid #e8ecf0",
@@ -699,23 +794,16 @@ export default function AdminRetreat() {
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                               {subs.map((s, idx) => (
                                 <div key={idx} style={{
-                                  padding: "12px",
-                                  background: "#fff",
-                                  border: "1.5px solid #e8ecf0",
-                                  borderRadius: 8,
+                                  padding: "12px", background: "#fff",
+                                  border: "1.5px solid #e8ecf0", borderRadius: 8,
                                   fontSize: 12, color: "#475569",
                                 }}>
-                                  {/* Name + edit button */}
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "#1e293b", flex: 1 }}>
-                                      {s.namaLengkap}
-                                    </p>
+                                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "#1e293b", flex: 1 }}>{s.namaLengkap}</p>
                                     <button
                                       onClick={() => {
                                         const memberIdx = reg.members.findIndex((m) => m === s);
-                                        if (memberIdx !== -1) {
-                                          openEditMember(reg.id!, memberIdx, s);
-                                        }
+                                        if (memberIdx !== -1) openEditMember(reg.id!, memberIdx, s);
                                       }}
                                       title="Edit informasi peserta"
                                       style={{
@@ -723,36 +811,23 @@ export default function AdminRetreat() {
                                         padding: "4px 8px", background: "#f1f5f9", color: "#64748b",
                                         border: "1.5px solid #e2e8f0", borderRadius: 5,
                                         cursor: "pointer", fontSize: 11, fontFamily: "inherit",
-                                        flexShrink: 0,
-                                        minHeight: 28,
+                                        flexShrink: 0, minHeight: 28,
                                       }}
                                     >
                                       <EditIcon />
                                     </button>
                                   </div>
-
-                                  {/* Phone */}
                                   {s.nomorTelpon && (
-                                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
-                                      📞 {s.nomorTelpon}
-                                    </p>
+                                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>📞 {s.nomorTelpon}</p>
                                   )}
-
-                                  {/* Badges row */}
                                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 8 }}>
                                     <span style={badgeStyle}>{s.relasi}</span>
                                     <span style={badgeStyle}>Kaos {s.ukuranKaos}</span>
-                                    <span style={badgeStyle}>
-                                      {s.transportasi === "bus" ? "Bus" : "Mobil"}
-                                    </span>
+                                    <span style={badgeStyle}>{s.transportasi === "bus" ? "Bus" : "Mobil"}</span>
                                   </div>
-
-                                  {/* Room input */}
                                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                     <span style={{ color: "#94a3b8" }}><BedIcon /></span>
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>
-                                      ({getRoomCapacity(s.tipeKamar)})
-                                    </span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>({getRoomCapacity(s.tipeKamar)})</span>
                                     <span style={{ fontSize: 12, color: "#64748b", fontWeight: 600 }}>Kamar:</span>
                                     <input
                                       type="text"
@@ -760,18 +835,12 @@ export default function AdminRetreat() {
                                       defaultValue={s.kamar}
                                       onBlur={(e) => {
                                         const memberIdx = reg.members.findIndex((m) => m === s);
-                                        if (memberIdx !== -1) {
-                                          handleRoomChange(reg.id!, memberIdx, e.target.value, reg.members);
-                                        }
+                                        if (memberIdx !== -1) handleRoomChange(reg.id!, memberIdx, e.target.value, reg.members);
                                       }}
                                       style={{
-                                        border: "1.5px solid #e8ecf0",
-                                        borderRadius: 6,
-                                        padding: "4px 8px",
-                                        fontSize: 12,
-                                        width: 72,
-                                        fontFamily: "inherit",
-                                        outline: "none",
+                                        border: "1.5px solid #e8ecf0", borderRadius: 6,
+                                        padding: "4px 8px", fontSize: 12, width: 72,
+                                        fontFamily: "inherit", outline: "none",
                                       }}
                                     />
                                   </div>
@@ -816,22 +885,17 @@ export default function AdminRetreat() {
                       width: "100%", boxSizing: "border-box",
                       border: "1.5px solid #e8ecf0", borderRadius: 8,
                       padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
-                      color: "#1e293b", outline: "none",
-                      background: "#fff",
+                      color: "#1e293b", outline: "none", background: "#fff",
                     }}
                   />
                 </div>
               );
             })}
-
-            {/* Description */}
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={{
                 display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
                 textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
-              }}>
-                Deskripsi
-              </label>
+              }}>Deskripsi</label>
               <textarea
                 value={config.description || ""}
                 onChange={(e) => setConfig((p) => ({ ...p, description: e.target.value }))}
@@ -840,14 +904,12 @@ export default function AdminRetreat() {
                   width: "100%", boxSizing: "border-box",
                   border: "1.5px solid #e8ecf0", borderRadius: 8,
                   padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
-                  color: "#1e293b", outline: "none", resize: "vertical",
-                  background: "#fff",
+                  color: "#1e293b", outline: "none", resize: "vertical", background: "#fff",
                 }}
               />
             </div>
           </div>
 
-          {/* Toggle registration */}
           <div style={{
             display: "flex", alignItems: "center", gap: 12,
             padding: "14px 16px", background: "#fff",
@@ -862,8 +924,7 @@ export default function AdminRetreat() {
               />
               <span style={{
                 position: "absolute", inset: 0, borderRadius: 12,
-                background: config.isOpen ? "#3b5bdb" : "#e2e8f0",
-                transition: "background 0.2s",
+                background: config.isOpen ? "#3b5bdb" : "#e2e8f0", transition: "background 0.2s",
               }} />
               <span style={{
                 position: "absolute", top: 3, left: config.isOpen ? 22 : 3, width: 18, height: 18,
@@ -879,7 +940,6 @@ export default function AdminRetreat() {
             </div>
           </div>
 
-          {/* Image uploads */}
           {(["poster", "banner"] as const).map((type) => {
             const urlKey = type === "poster" ? "posterUrl" : "bannerUrl";
             const label = type === "poster" ? "Upload Poster (Full)" : "Upload Banner (Home)";
@@ -891,9 +951,7 @@ export default function AdminRetreat() {
                 <label style={{
                   display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
                   textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10,
-                }}>
-                  {label}
-                </label>
+                }}>{label}</label>
                 {(config as Record<string, string>)[urlKey] && (
                   <div style={{ marginBottom: 10 }}>
                     <Image
@@ -910,24 +968,17 @@ export default function AdminRetreat() {
                     display: "inline-flex", alignItems: "center", gap: 6,
                     padding: "9px 16px", background: "#f8fafc",
                     border: "1.5px solid #e8ecf0", borderRadius: 7,
-                    cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#475569",
-                    minHeight: 40,
+                    cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#475569", minHeight: 40,
                   }}>
-                    <UploadIcon />
-                    Pilih Gambar
+                    <UploadIcon /> Pilih Gambar
                     <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: "none" }}
+                      type="file" accept="image/*" style={{ display: "none" }}
                       onChange={(e) => e.target.files?.[0] && handleImageUpload(type, e.target.files[0])}
                     />
                   </label>
                   {(config as Record<string, string>)[urlKey] && (
                     <button
-                      onClick={async () => {
-                        setConfig((p) => ({ ...p, [urlKey]: "" }));
-                        await updateRetreatConfig({ [urlKey]: "" });
-                      }}
+                      onClick={async () => { setConfig((p) => ({ ...p, [urlKey]: "" })); await updateRetreatConfig({ [urlKey]: "" }); }}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
                         padding: "9px 16px", background: "#fff5f5",
@@ -948,7 +999,6 @@ export default function AdminRetreat() {
             );
           })}
 
-          {/* Save button */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
             <button
               onClick={handleSaveConfig}
@@ -978,9 +1028,7 @@ export default function AdminRetreat() {
       )}
 
       {/* ── SCANNER MODAL ── */}
-      {showScanner && (
-        <QRScanner onScan={stableOnScan} onClose={() => setShowScanner(false)} />
-      )}
+      {showScanner && <QRScanner onScan={stableOnScan} onClose={() => setShowScanner(false)} />}
 
       {/* ── SCAN RESULT POPUP ── */}
       {scannedReg && (
@@ -1010,11 +1058,7 @@ export default function AdminRetreat() {
             </div>
             <button
               onClick={() => { setScannedReg(null); setScanMsg(""); }}
-              style={{
-                width: "100%", padding: "13px", background: "#f1f5f9",
-                color: "#475569", border: "none", borderRadius: 10,
-                fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-              }}
+              style={{ width: "100%", padding: "13px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}
             >
               Tutup
             </button>
@@ -1029,10 +1073,7 @@ export default function AdminRetreat() {
             <div style={{ width: 56, height: 56, background: "#fef2f2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 24 }}>🔍</div>
             <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 15, color: "#dc2626" }}>QR Tidak Ditemukan</p>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8" }}>{scanError}</p>
-            <button
-              onClick={() => setScanError("")}
-              style={{ width: "100%", padding: "13px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}
-            >
+            <button onClick={() => setScanError("")} style={{ width: "100%", padding: "13px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>
               Tutup
             </button>
           </div>
@@ -1073,11 +1114,7 @@ export default function AdminRetreat() {
             />
             <button
               onClick={() => setPaymentProofUrl(null)}
-              style={{
-                width: "100%", padding: "13px", background: "#f1f5f9",
-                color: "#475569", border: "none", borderRadius: 10,
-                fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-              }}
+              style={{ width: "100%", padding: "13px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}
             >
               Tutup
             </button>
@@ -1090,175 +1127,203 @@ export default function AdminRetreat() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#1e293b" }}>Edit Informasi Peserta</h2>
-            
-            {/* Name field */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
-                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
-              }}>
-                Nama Lengkap
-              </label>
-              <input
-                type="text"
-                value={editFormData.namaLengkap}
-                onChange={(e) => setEditFormData((p) => ({ ...p, namaLengkap: e.target.value }))}
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  border: "1.5px solid #e8ecf0", borderRadius: 8,
-                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
-                  color: "#1e293b", outline: "none",
-                  background: "#fff",
-                }}
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Nama Lengkap</label>
+              <input type="text" value={editFormData.namaLengkap} onChange={(e) => setEditFormData((p) => ({ ...p, namaLengkap: e.target.value }))}
+                style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff" }}
               />
             </div>
-
-            {/* Phone field */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
-                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
-              }}>
-                Nomor Telepon
-              </label>
-              <input
-                type="text"
-                value={editFormData.nomorTelpon}
-                onChange={(e) => setEditFormData((p) => ({ ...p, nomorTelpon: e.target.value }))}
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  border: "1.5px solid #e8ecf0", borderRadius: 8,
-                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
-                  color: "#1e293b", outline: "none",
-                  background: "#fff",
-                }}
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Nomor Telepon</label>
+              <input type="text" value={editFormData.nomorTelpon} onChange={(e) => setEditFormData((p) => ({ ...p, nomorTelpon: e.target.value }))}
+                style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff" }}
               />
             </div>
-
-            {/* Shirt size field */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
-                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
-              }}>
-                Ukuran Kaos
-              </label>
-              <select
-                value={editFormData.ukuranKaos}
-                onChange={(e) => setEditFormData((p) => ({ ...p, ukuranKaos: e.target.value as RetreatRegistration["members"][0]["ukuranKaos"] }))}
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  border: "1.5px solid #e8ecf0", borderRadius: 8,
-                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
-                  color: "#1e293b", outline: "none",
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Ukuran Kaos</label>
+              <select value={editFormData.ukuranKaos} onChange={(e) => setEditFormData((p) => ({ ...p, ukuranKaos: e.target.value as RetreatRegistration["members"][0]["ukuranKaos"] }))}
+                style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff", cursor: "pointer" }}
               >
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="XL">XL</option>
-                <option value="XXL">XXL</option>
+                <option value="S">S</option><option value="M">M</option><option value="L">L</option>
+                <option value="XL">XL</option><option value="XXL">XXL</option>
               </select>
             </div>
-
-            {/* Transportation field */}
             <div style={{ marginBottom: 20 }}>
-              <label style={{
-                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
-                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
-              }}>
-                Transportasi
-              </label>
-              <select
-                value={editFormData.transportasi}
-                onChange={(e) => setEditFormData((p) => ({ ...p, transportasi: e.target.value as RetreatRegistration["members"][0]["transportasi"] }))}
-                style={{
-                  width: "100%", boxSizing: "border-box",
-                  border: "1.5px solid #e8ecf0", borderRadius: 8,
-                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
-                  color: "#1e293b", outline: "none",
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Transportasi</label>
+              <select value={editFormData.transportasi} onChange={(e) => setEditFormData((p) => ({ ...p, transportasi: e.target.value as RetreatRegistration["members"][0]["transportasi"] }))}
+                style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff", cursor: "pointer" }}
               >
-                <option value="bus">Bus</option>
-                <option value="mobil_sendiri">Mobil Sendiri</option>
+                <option value="bus">Bus</option><option value="mobil_sendiri">Mobil Sendiri</option>
               </select>
             </div>
-
-            {/* Action buttons */}
             <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={closeEditMember}
-                style={{
-                  flex: 1, padding: "13px", background: "#f1f5f9", color: "#475569",
-                  border: "1.5px solid #e2e8f0", borderRadius: 10,
-                  fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-                  minHeight: 48,
-                }}
-              >
+              <button onClick={closeEditMember} style={{ flex: 1, padding: "13px", background: "#f1f5f9", color: "#475569", border: "1.5px solid #e2e8f0", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer", minHeight: 48 }}>
                 Batal
               </button>
-              <button
-                onClick={handleSaveEditMember}
-                style={{
-                  flex: 1, padding: "13px", background: "#3b5bdb", color: "#fff",
-                  border: "none", borderRadius: 10,
-                  fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-                  minHeight: 48,
-                }}
-              >
-                <SaveIcon /> Simpan
+              <button onClick={handleSaveEditMember} style={{ flex: 1, padding: "13px", background: "#3b5bdb", color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer", minHeight: 48 }}>
+                Simpan
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── MERGE CONFIRMATION MODAL ── */}
+      {showMergeModal && mergeSelected.length === 2 && (() => {
+        const regA = registrations.find((r) => r.id === mergeSelected[0])!;
+        const regB = registrations.find((r) => r.id === mergeSelected[1])!;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
+            <div style={{ background: "#fff", borderRadius: 18, padding: 24, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+
+              {/* Header */}
+              <div style={{ marginBottom: 20 }}>
+                <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: "#1e293b" }}>
+                  Gabungkan Pendaftaran
+                </h2>
+                <p style={{ margin: 0, fontSize: 13, color: "#94a3b8" }}>
+                  Pilih siapa pendaftar utama. Semua anggota akan digabung di bawah nama tersebut.
+                </p>
+              </div>
+
+              {/* Pick main applicant */}
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Pilih Pendaftar Utama
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+                {[regA, regB].map((reg) => {
+                  const isMain = mergeMainId === reg.id;
+                  const { color, initials } = getAvatar(reg.members[0].namaLengkap);
+                  return (
+                    <button
+                      key={reg.id}
+                      onClick={() => setMergeMainId(reg.id!)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "14px", borderRadius: 12, cursor: "pointer",
+                        border: isMain ? "2px solid #ea580c" : "1.5px solid #e8ecf0",
+                        background: isMain ? "#fff7ed" : "#f8fafc",
+                        textAlign: "left", fontFamily: "inherit",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {/* Radio */}
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                        border: isMain ? "6px solid #ea580c" : "2px solid #cbd5e1",
+                        background: "#fff", transition: "all 0.15s",
+                      }} />
+                      {/* Avatar */}
+                      <div style={{
+                        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                        background: color, display: "flex", alignItems: "center",
+                        justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800,
+                      }}>
+                        {initials}
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
+                          {reg.members[0].namaLengkap}
+                        </p>
+                        <p style={{ margin: "3px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                          {reg.members.length} anggota · {reg.members[0].nomorTelpon}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Preview merged result */}
+              {mergeMainId && (() => {
+                const mainReg = registrations.find((r) => r.id === mergeMainId)!;
+                const secId = mergeSelected.find((id) => id !== mergeMainId)!;
+                const secReg = registrations.find((r) => r.id === secId)!;
+                const allMembers = [...mainReg.members, ...secReg.members];
+                return (
+                  <div style={{ padding: "14px", background: "#f8fafc", border: "1.5px solid #e8ecf0", borderRadius: 10, marginBottom: 20 }}>
+                    <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Preview Hasil ({allMembers.length} anggota)
+                    </p>
+                    {allMembers.map((m, i) => (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "8px 0",
+                        borderBottom: i < allMembers.length - 1 ? "1px solid #e8ecf0" : "none",
+                      }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700,
+                          background: i === 0 ? "#fff7ed" : "#f1f5f9",
+                          color: i === 0 ? "#ea580c" : "#94a3b8",
+                          padding: "2px 8px", borderRadius: 10, flexShrink: 0,
+                        }}>
+                          {i === 0 ? "UTAMA" : `#${i + 1}`}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", flex: 1 }}>{m.namaLengkap}</span>
+                        <span style={{ fontSize: 11, color: "#94a3b8" }}>Kaos {m.ukuranKaos}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => { setShowMergeModal(false); setMergeMainId(null); }}
+                  disabled={mergeSaving}
+                  style={{
+                    flex: 1, padding: "13px", background: "#f1f5f9", color: "#475569",
+                    border: "1.5px solid #e2e8f0", borderRadius: 10,
+                    fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer", minHeight: 48,
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleMerge}
+                  disabled={!mergeMainId || mergeSaving}
+                  style={{
+                    flex: 1, padding: "13px",
+                    background: !mergeMainId || mergeSaving ? "#e8ecf0" : "#ea580c",
+                    color: !mergeMainId || mergeSaving ? "#94a3b8" : "#fff",
+                    border: "none", borderRadius: 10,
+                    fontWeight: 700, fontSize: 13, fontFamily: "inherit",
+                    cursor: !mergeMainId || mergeSaving ? "not-allowed" : "pointer",
+                    minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  }}
+                >
+                  <MergeIcon />
+                  {mergeSaving ? "Menggabungkan..." : "Gabungkan"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 // ── Generic confirmation popup ─────────────────────────────────────────────────
 function ConfirmPopup({
-  message,
-  onConfirm,
-  onCancel,
+  message, onConfirm, onCancel,
   confirmLabel = "Ya, Lanjutkan",
   confirmColor = "#16a34a",
 }: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  confirmLabel?: string;
-  confirmColor?: string;
+  message: string; onConfirm: () => void; onCancel: () => void;
+  confirmLabel?: string; confirmColor?: string;
 }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
       <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 340, textAlign: "center" }}>
         <p style={{ margin: "0 0 20px", fontWeight: 700, fontSize: 15, color: "#1e293b" }}>{message}</p>
         <div style={{ display: "flex", gap: 10 }}>
-          <button
-            onClick={onCancel}
-            style={{
-              flex: 1, padding: "13px", background: "#f1f5f9", color: "#475569",
-              border: "1.5px solid #e2e8f0", borderRadius: 10,
-              fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-              minHeight: 48,
-            }}
-          >
+          <button onClick={onCancel} style={{ flex: 1, padding: "13px", background: "#f1f5f9", color: "#475569", border: "1.5px solid #e2e8f0", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer", minHeight: 48 }}>
             Batal
           </button>
-          <button
-            onClick={onConfirm}
-            style={{
-              flex: 1, padding: "13px", background: confirmColor, color: "#fff",
-              border: "none", borderRadius: 10,
-              fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-              minHeight: 48,
-            }}
-          >
+          <button onClick={onConfirm} style={{ flex: 1, padding: "13px", background: confirmColor, color: "#fff", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer", minHeight: 48 }}>
             {confirmLabel}
           </button>
         </div>

@@ -2,7 +2,7 @@ console.log("firebase.ts initializing, apps count:", getApps().length);
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { initializeFirestore } from "firebase/firestore";
 import { collection, doc, getDoc, setDoc, addDoc, updateDoc,
-  getDocs, query, orderBy, serverTimestamp, where } from "firebase/firestore";
+  getDocs, query, orderBy, serverTimestamp, where,deleteDoc } from "firebase/firestore";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, signOut } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -113,6 +113,24 @@ export async function uploadRetreatImage(type: "poster" | "banner", file: File):
   const storageRef = ref(storage, `retreat2026/posters/${type}`);
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
+}
+
+export async function mergeRegistrations(
+  mainId: string,
+  secondaryId: string,
+  mainReg: RetreatRegistration,
+  secondaryReg: RetreatRegistration,
+) {
+  // Combine: main's members first, then secondary's members
+  const mergedMembers = [...mainReg.members, ...secondaryReg.members];
+ 
+  // Write merged members onto the main registration
+  await updateDoc(doc(db, "retreat2026_registrations", mainId), {
+    members: mergedMembers,
+  });
+ 
+  // Delete the secondary registration
+  await deleteDoc(doc(db, "retreat2026_registrations", secondaryId));
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
