@@ -91,6 +91,17 @@ export async function updateMemberRoom(
   await updateDoc(doc(db, "retreat2026_registrations", id), { members: updated });
 }
 
+export async function updateMemberInfo(
+  id: string,
+  memberIndex: number,
+  memberData: Partial<RetreatRegistration["members"][0]>,
+  members: RetreatRegistration["members"]
+) {
+  const updated = [...members];
+  updated[memberIndex] = { ...updated[memberIndex], ...memberData };
+  await updateDoc(doc(db, "retreat2026_registrations", id), { members: updated });
+}
+
 // ── Storage ────────────────────────────────────────────────────────────────────
 export async function uploadPaymentProof(registrationId: string, file: File): Promise<string> {
   const storageRef = ref(storage, `retreat2026/payments/${registrationId}/proof`);

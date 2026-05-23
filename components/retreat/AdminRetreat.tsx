@@ -10,6 +10,7 @@ import {
   getAllRegistrations,
   updateRegistrationStatus,
   updateMemberRoom,
+  updateMemberInfo,
   uploadRetreatImage,
 } from "@/lib/firebase";
 import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
@@ -105,6 +106,13 @@ const ReceiptIcon = () => (
   </svg>
 );
 
+const EditIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+
 const getStatusStyle = (status: string): { bg: string; color: string; border: string } => {
   switch (status) {
     case "registered":   return { bg: "#fefce8", color: "#ca8a04", border: "#fde68a" };
@@ -162,6 +170,21 @@ export default function AdminRetreat() {
 
   // Payment proof modal
   const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
+
+  // Edit member modal
+  const [editingRegId, setEditingRegId] = useState<string | null>(null);
+  const [editingMemberIdx, setEditingMemberIdx] = useState<number | null>(null);
+  const [editFormData, setEditFormData] = useState<{
+    namaLengkap: string;
+    nomorTelpon: string;
+    ukuranKaos: RetreatRegistration["members"][0]["ukuranKaos"];
+    transportasi: RetreatRegistration["members"][0]["transportasi"];
+  }>({
+    namaLengkap: "",
+    nomorTelpon: "",
+    ukuranKaos: "M",
+    transportasi: "bus",
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -235,6 +258,44 @@ export default function AdminRetreat() {
         return { ...r, members: updated };
       })
     );
+  }
+
+  function openEditMember(regId: string, memberIdx: number, member: RetreatRegistration["members"][0]) {
+    setEditingRegId(regId);
+    setEditingMemberIdx(memberIdx);
+    setEditFormData({
+      namaLengkap: member.namaLengkap,
+      nomorTelpon: member.nomorTelpon,
+      ukuranKaos: member.ukuranKaos,
+      transportasi: member.transportasi,
+    });
+  }
+
+  async function handleSaveEditMember() {
+    if (editingRegId === null || editingMemberIdx === null) return;
+    const reg = registrations.find((r) => r.id === editingRegId);
+    if (!reg) return;
+    await updateMemberInfo(editingRegId, editingMemberIdx, editFormData, reg.members);
+    setRegistrations((prev) =>
+      prev.map((r) => {
+        if (r.id !== editingRegId) return r;
+        const updated = [...r.members];
+        updated[editingMemberIdx] = { ...updated[editingMemberIdx], ...editFormData };
+        return { ...r, members: updated };
+      })
+    );
+    closeEditMember();
+  }
+
+  function closeEditMember() {
+    setEditingRegId(null);
+    setEditingMemberIdx(null);
+    setEditFormData({
+      namaLengkap: "",
+      nomorTelpon: "",
+      ukuranKaos: "M",
+      transportasi: "bus",
+    });
   }
 
   async function handleSaveConfig() {
@@ -426,7 +487,7 @@ export default function AdminRetreat() {
                       }}
                     >
                       {/* Top section: avatar + name + status + chevron */}
-                      <button
+                      <div
                         onClick={() => setExpandedId(isExpanded ? null : reg.id!)}
                         style={{
                           width: "100%",
@@ -462,6 +523,24 @@ export default function AdminRetreat() {
                           </p>
                         </div>
 
+                        {/* Edit button for main member */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditMember(reg.id!, 0, main);
+                          }}
+                          title="Edit informasi peserta"
+                          style={{
+                            flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
+                            padding: "6px 10px", background: "#f1f5f9", color: "#64748b",
+                            border: "1.5px solid #e2e8f0", borderRadius: 6,
+                            cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+                            minHeight: 32,
+                          }}
+                        >
+                          <EditIcon />
+                        </button>
+
                         {/* Status badge */}
                         <div style={{
                           flexShrink: 0, fontSize: 11, fontWeight: 700,
@@ -481,7 +560,7 @@ export default function AdminRetreat() {
                         }}>
                           <ChevronDownIcon />
                         </div>
-                      </button>
+                      </div>
 
                       {/* Bottom section: badges + room + action buttons */}
                       <div style={{
@@ -626,10 +705,31 @@ export default function AdminRetreat() {
                                   borderRadius: 8,
                                   fontSize: 12, color: "#475569",
                                 }}>
-                                  {/* Name */}
-                                  <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13, color: "#1e293b" }}>
-                                    {s.namaLengkap}
-                                  </p>
+                                  {/* Name + edit button */}
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "#1e293b", flex: 1 }}>
+                                      {s.namaLengkap}
+                                    </p>
+                                    <button
+                                      onClick={() => {
+                                        const memberIdx = reg.members.findIndex((m) => m === s);
+                                        if (memberIdx !== -1) {
+                                          openEditMember(reg.id!, memberIdx, s);
+                                        }
+                                      }}
+                                      title="Edit informasi peserta"
+                                      style={{
+                                        display: "flex", alignItems: "center", gap: 4,
+                                        padding: "4px 8px", background: "#f1f5f9", color: "#64748b",
+                                        border: "1.5px solid #e2e8f0", borderRadius: 5,
+                                        cursor: "pointer", fontSize: 11, fontFamily: "inherit",
+                                        flexShrink: 0,
+                                        minHeight: 28,
+                                      }}
+                                    >
+                                      <EditIcon />
+                                    </button>
+                                  </div>
 
                                   {/* Phone */}
                                   {s.nomorTelpon && (
@@ -964,9 +1064,11 @@ export default function AdminRetreat() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
             <h2 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1e293b" }}>Bukti Pembayaran</h2>
-            <img
+            <Image
               src={paymentProofUrl}
               alt="Bukti pembayaran"
+              width={500}
+              height={600}
               style={{ width: "100%", maxHeight: "60vh", objectFit: "contain", borderRadius: 10, display: "block", marginBottom: 16 }}
             />
             <button
@@ -979,6 +1081,138 @@ export default function AdminRetreat() {
             >
               Tutup
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT MEMBER MODAL ── */}
+      {editingRegId !== null && editingMemberIdx !== null && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 400, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            <h2 style={{ margin: "0 0 20px", fontSize: 16, fontWeight: 700, color: "#1e293b" }}>Edit Informasi Peserta</h2>
+            
+            {/* Name field */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
+                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+              }}>
+                Nama Lengkap
+              </label>
+              <input
+                type="text"
+                value={editFormData.namaLengkap}
+                onChange={(e) => setEditFormData((p) => ({ ...p, namaLengkap: e.target.value }))}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  border: "1.5px solid #e8ecf0", borderRadius: 8,
+                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
+                  color: "#1e293b", outline: "none",
+                  background: "#fff",
+                }}
+              />
+            </div>
+
+            {/* Phone field */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
+                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+              }}>
+                Nomor Telepon
+              </label>
+              <input
+                type="text"
+                value={editFormData.nomorTelpon}
+                onChange={(e) => setEditFormData((p) => ({ ...p, nomorTelpon: e.target.value }))}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  border: "1.5px solid #e8ecf0", borderRadius: 8,
+                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
+                  color: "#1e293b", outline: "none",
+                  background: "#fff",
+                }}
+              />
+            </div>
+
+            {/* Shirt size field */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
+                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+              }}>
+                Ukuran Kaos
+              </label>
+              <select
+                value={editFormData.ukuranKaos}
+                onChange={(e) => setEditFormData((p) => ({ ...p, ukuranKaos: e.target.value as RetreatRegistration["members"][0]["ukuranKaos"] }))}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  border: "1.5px solid #e8ecf0", borderRadius: 8,
+                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
+                  color: "#1e293b", outline: "none",
+                  background: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+                <option value="XXL">XXL</option>
+              </select>
+            </div>
+
+            {/* Transportation field */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8",
+                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6,
+              }}>
+                Transportasi
+              </label>
+              <select
+                value={editFormData.transportasi}
+                onChange={(e) => setEditFormData((p) => ({ ...p, transportasi: e.target.value as RetreatRegistration["members"][0]["transportasi"] }))}
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  border: "1.5px solid #e8ecf0", borderRadius: 8,
+                  padding: "10px 12px", fontSize: 13, fontFamily: "inherit",
+                  color: "#1e293b", outline: "none",
+                  background: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="bus">Bus</option>
+                <option value="mobil_sendiri">Mobil Sendiri</option>
+              </select>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={closeEditMember}
+                style={{
+                  flex: 1, padding: "13px", background: "#f1f5f9", color: "#475569",
+                  border: "1.5px solid #e2e8f0", borderRadius: 10,
+                  fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                  minHeight: 48,
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveEditMember}
+                style={{
+                  flex: 1, padding: "13px", background: "#3b5bdb", color: "#fff",
+                  border: "none", borderRadius: 10,
+                  fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer",
+                  minHeight: 48,
+                }}
+              >
+                <SaveIcon /> Simpan
+              </button>
+            </div>
           </div>
         </div>
       )}
