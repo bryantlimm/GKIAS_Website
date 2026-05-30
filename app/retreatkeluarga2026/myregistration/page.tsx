@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { uploadPaymentProof, updatePaymentProof } from "@/lib/firebase"; // add updatePaymentProof to your firebase lib
-import type { RetreatRegistration } from "@/lib/retreat-types";
+import { uploadPaymentProof, updatePaymentProof, updateMemberInfo } from "@/lib/firebase"; // add updatePaymentProof to your firebase lib
+import type { RetreatRegistration, KaosSize } from "@/lib/retreat-types";
 import { LABEL_TIPE_KAMAR } from "@/lib/retreat-types";
 
 const STATUS_STEPS = ["registered", "approved", "checked_in"] as const;
@@ -35,6 +35,15 @@ export default function MyRegistrationPage() {
   const [proofSuccess, setProofSuccess] = useState(false);
   const [proofError, setProofError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Member edit state - for individual field editing
+  const [editingField, setEditingField] = useState<{
+    memberIdx: number;
+    fieldName: "ukuranKaos" | "transportasi";
+  } | null>(null);
+  const [editingValue, setEditingValue] = useState<string>("");
+  const [updatingField, setUpdatingField] = useState(false);
+  const [fieldUpdateError, setFieldUpdateError] = useState("");
 
   async function handleLookup() {
     const nama = namaInput.trim();
@@ -129,6 +138,69 @@ export default function MyRegistrationPage() {
       setProofError("Gagal mengupload bukti. Coba lagi.");
     } finally {
       setUploadingProof(false);
+    }
+  }
+
+  function handleStartEditField(
+    memberIdx: number,
+    fieldName: "ukuranKaos" | "transportasi"
+  ) {
+    const member = registration?.members[memberIdx];
+    if (!member) return;
+    
+    setEditingField({ memberIdx, fieldName });
+    setEditingValue(
+      fieldName === "ukuranKaos" ? member.ukuranKaos : member.transportasi
+    );
+    setFieldUpdateError("");
+  }
+
+  function handleCancelEditField() {
+    setEditingField(null);
+    setEditingValue("");
+    setFieldUpdateError("");
+  }
+
+  async function handleSaveField() {
+    if (!editingField || !registration) return;
+
+    setUpdatingField(true);
+    setFieldUpdateError("");
+
+    try {
+      const { memberIdx, fieldName } = editingField;
+      const updateData =
+        fieldName === "ukuranKaos"
+          ? { ukuranKaos: editingValue as KaosSize }
+          : { transportasi: editingValue as "bus" | "mobil_sendiri" };
+
+      await updateMemberInfo(
+        registration.id,
+        memberIdx,
+        updateData,
+        registration.members
+      );
+
+      // Update local state
+      setRegistration((prev) => {
+        if (!prev) return prev;
+        const updatedMembers = [...prev.members];
+        updatedMembers[memberIdx] = {
+          ...updatedMembers[memberIdx],
+          ...(fieldName === "ukuranKaos"
+            ? { ukuranKaos: editingValue as KaosSize }
+            : { transportasi: editingValue as "bus" | "mobil_sendiri" }),
+        };
+        return { ...prev, members: updatedMembers };
+      });
+
+      setEditingField(null);
+      setEditingValue("");
+    } catch (e) {
+      console.error(e);
+      setFieldUpdateError("Gagal menyimpan data. Coba lagi.");
+    } finally {
+      setUpdatingField(false);
     }
   }
 
@@ -440,7 +512,8 @@ export default function MyRegistrationPage() {
           <p className="text-sm font-semibold text-gray-500">Detail Peserta</p>
           {registration.members.map((m, i) => (
             <div key={i} className="border-b last:border-0 pb-4 last:pb-0">
-              <div className="flex justify-between items-start">
+              {/* Header with name and room */}
+              <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-semibold text-gray-800">{m.namaLengkap}</p>
                   {m.relasi && (
@@ -457,12 +530,105 @@ export default function MyRegistrationPage() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-1 mt-2 text-xs text-gray-500">
-                <span>Ukuran kaos: {m.ukuranKaos}</span>
-                <span>Transportasi: {m.transportasi === "bus" ? "Bus" : "Mobil Sendiri"}</span>
-                <span>Tipe kamar: {LABEL_TIPE_KAMAR[m.tipeKamar]}</span>
-                <span>Umur: {m.umur}</span>
+
+              {/* Editable fields with inline edit */}
+              <div className="space-y-2">
+                {/* Ukuran Kaos field */}
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span>Ukuran kaos: <strong className="text-gray-700">{m.ukuranKaos}</strong></span>
+                  {editingField?.memberIdx === i && editingField.fieldName === "ukuranKaos" ? (
+                    <div className="flex gap-1 items-center">
+                      <select
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        autoFocus
+                        className="border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      >
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">XXL</option>
+                      </select>
+                      <button
+                        onClick={handleSaveField}
+                        disabled={updatingField}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={handleCancelEditField}
+                        disabled={updatingField}
+                        className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400 disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleStartEditField(i, "ukuranKaos")}
+                      className="text-blue-600 hover:text-blue-700 font-semibold text-xs transition"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+
+                {/* Transportasi field */}
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span>Transportasi: <strong className="text-gray-700">{m.transportasi === "bus" ? "Bus" : "Mobil Sendiri"}</strong></span>
+                  {editingField?.memberIdx === i && editingField.fieldName === "transportasi" ? (
+                    <div className="flex gap-1 items-center">
+                      <select
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        autoFocus
+                        className="border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      >
+                        <option value="bus">Bus</option>
+                        <option value="mobil_sendiri">Mobil Sendiri</option>
+                      </select>
+                      <button
+                        onClick={handleSaveField}
+                        disabled={updatingField}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={handleCancelEditField}
+                        disabled={updatingField}
+                        className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400 disabled:opacity-50"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleStartEditField(i, "transportasi")}
+                      className="text-blue-600 hover:text-blue-700 font-semibold text-xs transition"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+
+                {/* Read-only fields */}
+                <div className="text-xs text-gray-500">
+                  <span>Tipe kamar: {LABEL_TIPE_KAMAR[m.tipeKamar]}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  <span>Umur: {m.umur}</span>
+                </div>
               </div>
+
+              {/* Error message */}
+              {fieldUpdateError && editingField?.memberIdx === i && (
+                <div className="mt-2 bg-red-50 border border-red-100 rounded px-2 py-1 text-xs text-red-600">
+                  {fieldUpdateError}
+                </div>
+              )}
             </div>
           ))}
         </div>
