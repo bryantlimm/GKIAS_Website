@@ -204,8 +204,8 @@ function LineChart({
         </linearGradient>
       </defs>
       <g transform={`translate(${PAD.left},${PAD.top})`}>
-        {yTicks.map(t => (
-          <g key={t}>
+        {yTicks.map((t, i) => (
+          <g key={`ytick-${i}`}>
             <line x1={0} y1={yScale(t)} x2={W} y2={yScale(t)} stroke={C.border} strokeWidth={1} strokeDasharray="4 4" />
             <text x={-8} y={yScale(t) + 4} textAnchor="end" fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
               {t.toLocaleString('id-ID')}
@@ -215,12 +215,12 @@ function LineChart({
         <polygon points={areaPoints} fill="url(#chartGrad)" />
         <polyline points={points} fill="none" stroke={C.primary} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
         {data.map((d, i) => (
-          <circle key={i} cx={xScale(i)} cy={yScale(d.value)} r={3} fill={C.card} stroke={C.primary} strokeWidth={2} />
+          <circle key={`dot-${i}`} cx={xScale(i)} cy={yScale(d.value)} r={3} fill={C.card} stroke={C.primary} strokeWidth={2} />
         ))}
-        {xTicks.map((d, i) => {
+        {xTicks.map((d) => {
           const origI = data.indexOf(d);
           return (
-            <text key={i} x={xScale(origI)} y={H + 18} textAnchor="middle" fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
+            <text key={`xtick-${origI}`} x={xScale(origI)} y={H + 18} textAnchor="middle" fontSize={10} fill={C.muted} fontFamily="Nunito, sans-serif">
               {d.date}
             </text>
           );
