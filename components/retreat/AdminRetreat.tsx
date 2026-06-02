@@ -257,6 +257,7 @@ export default function AdminRetreat() {
     if (found.status === "checked_in") { setScannedReg(found); }
   }, [registrations]);
 
+  const [isHovered, setIsHovered] = useState(false);
   useEffect(() => { handleScanRef.current = handleScan; }, [handleScan]);
   const stableOnScan = useCallback((qrId: string) => { handleScanRef.current(qrId); }, []);
 
@@ -461,6 +462,43 @@ export default function AdminRetreat() {
               {mergeMode ? "Batal" : "Merge"}
             </button>
 
+            {/* Paper form scanner button */}
+            {/* <button
+              onClick={() => setShowPaperScanner(true)}
+              style={{
+                flex: 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                padding: "10px 16px", borderRadius: 8, border: "1.5px solid #d1fae5",
+                background: "#ecfdf5", color: "#059669",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                transition: "all 0.15s",
+                minHeight: 44,
+              }}
+            >
+              <FormScanIcon />
+              Scan Form
+            </button> */}
+            {/* Paper form scanner button (Disabled / Coming Soon) */}
+            <button
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              style={{
+                flex: 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                padding: "10px 16px", borderRadius: 8, 
+                border: "1.5px solid #e5e7eb", // Soft gray border
+                background: "#f3f4f6",          // Light gray background
+                color: "#9ca3af",               // Muted gray text/icon
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", 
+                cursor: "not-allowed",          // Shows the disabled "circle-slash" cursor
+                transition: "all 0.15s",
+                minHeight: 44,
+              }}
+            >
+              <FormScanIcon />
+              {isHovered ? "Coming Soon" : "Scan Form"}
+            </button>
+            
             {/* QR scanner button */}
             <button
               onClick={() => { setShowScanner(true); setScanMsg(""); setScannedReg(null); }}
@@ -476,23 +514,6 @@ export default function AdminRetreat() {
             >
               <ScanIcon />
               Scan QR
-            </button>
-
-            {/* Paper form scanner button */}
-            <button
-              onClick={() => setShowPaperScanner(true)}
-              style={{
-                flex: 1,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                padding: "10px 16px", borderRadius: 8, border: "1.5px solid #d1fae5",
-                background: "#ecfdf5", color: "#059669",
-                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
-                transition: "all 0.15s",
-                minHeight: 44,
-              }}
-            >
-              <FormScanIcon />
-              Scan Form
             </button>
 
             {/* Export button */}
