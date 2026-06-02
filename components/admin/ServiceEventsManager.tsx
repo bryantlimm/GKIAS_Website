@@ -768,7 +768,7 @@ export default function ServiceEventsManager() {
             onClick={() => { resetForm(); setView('create'); }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#3b5bdb', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
           >
-            <span style={{ fontSize: 16 }}>+</span> Buat Laporan
+            <span style={{ fontSize: 16 }}>+</span>
           </button>
         </div>
 

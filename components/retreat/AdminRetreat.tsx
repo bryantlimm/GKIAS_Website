@@ -18,6 +18,8 @@ import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRef } from "react";
+import PaperFormScanner from "./PaperFormScanner";
+
 const QRScanner = dynamic(() => import("./QRScanner"), { ssr: false });
 
 type AdminTab = "list" | "details";
@@ -119,6 +121,17 @@ const MergeIcon = () => (
   </svg>
 );
 
+// New icon for scanning a paper/document form
+const FormScanIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="9" y1="13" x2="15" y2="13"/>
+    <line x1="9" y1="17" x2="13" y2="17"/>
+    <path d="M17 17l2 2 4-4" />
+  </svg>
+);
+
 const getStatusStyle = (status: string): { bg: string; color: string; border: string } => {
   switch (status) {
     case "registered":   return { bg: "#fefce8", color: "#ca8a04", border: "#fde68a" };
@@ -169,6 +182,9 @@ export default function AdminRetreat() {
   const [scannedReg, setScannedReg] = useState<RetreatRegistration | null>(null);
   const [scanMsg, setScanMsg] = useState("");
   const [scanError, setScanError] = useState("");
+
+  // Paper form scanner — hook is correctly inside the component
+  const [showPaperScanner, setShowPaperScanner] = useState(false);
 
   // Confirmation popups
   const [confirmApprove, setConfirmApprove] = useState<string | null>(null);
@@ -445,6 +461,7 @@ export default function AdminRetreat() {
               {mergeMode ? "Batal" : "Merge"}
             </button>
 
+            {/* QR scanner button */}
             <button
               onClick={() => { setShowScanner(true); setScanMsg(""); setScannedReg(null); }}
               style={{
@@ -460,6 +477,25 @@ export default function AdminRetreat() {
               <ScanIcon />
               Scan QR
             </button>
+
+            {/* Paper form scanner button */}
+            <button
+              onClick={() => setShowPaperScanner(true)}
+              style={{
+                flex: 1,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                padding: "10px 16px", borderRadius: 8, border: "1.5px solid #d1fae5",
+                background: "#ecfdf5", color: "#059669",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                transition: "all 0.15s",
+                minHeight: 44,
+              }}
+            >
+              <FormScanIcon />
+              Scan Form
+            </button>
+
+            {/* Export button */}
             <button
               onClick={handleExportXLSX}
               style={{
@@ -491,7 +527,6 @@ export default function AdminRetreat() {
               borderRadius: 10, marginBottom: 12, flexWrap: "wrap",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {/* <span style={{ fontSize: 20 }}>🔗</span> */}
                 <div>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#9a3412" }}>
                     Mode Merge Aktif
@@ -579,7 +614,6 @@ export default function AdminRetreat() {
                       <div
                         onClick={() => {
                           if (mergeMode) {
-                            // In merge mode, clicking the card toggles selection
                             setMergeSelected((prev) => {
                               if (prev.includes(reg.id!)) return prev.filter((id) => id !== reg.id);
                               if (prev.length >= 2) return prev;
@@ -598,7 +632,7 @@ export default function AdminRetreat() {
                           minHeight: 56,
                         }}
                       >
-                        {/* Merge checkbox — shown when merge mode is active */}
+                        {/* Merge checkbox */}
                         {mergeMode && (
                           <div style={{
                             width: 22, height: 22, borderRadius: 6, flexShrink: 0,
@@ -640,7 +674,7 @@ export default function AdminRetreat() {
                           </p>
                         </div>
 
-                        {/* Edit button — hidden in merge mode */}
+                        {/* Edit button */}
                         {!mergeMode && (
                           <button
                             onClick={(e) => { e.stopPropagation(); openEditMember(reg.id!, 0, main); }}
@@ -668,7 +702,7 @@ export default function AdminRetreat() {
                           {getStatusLabel(reg.status)}
                         </div>
 
-                        {/* Chevron — hidden in merge mode */}
+                        {/* Chevron */}
                         {!mergeMode && (
                           <div style={{
                             flexShrink: 0, color: "#94a3b8",
@@ -680,7 +714,7 @@ export default function AdminRetreat() {
                         )}
                       </div>
 
-                      {/* Bottom section — hidden in merge mode for cleanliness */}
+                      {/* Bottom section */}
                       {!mergeMode && (
                         <div style={{
                           display: "flex", flexWrap: "wrap", alignItems: "center",
@@ -773,7 +807,7 @@ export default function AdminRetreat() {
                       )}
                     </div>
 
-                    {/* ── Expanded: sub-members — hidden in merge mode ── */}
+                    {/* ── Expanded: sub-members ── */}
                     {isExpanded && !mergeMode && (
                       <div style={{
                         padding: "16px", background: "#f8fafc",
@@ -818,7 +852,12 @@ export default function AdminRetreat() {
                                     </button>
                                   </div>
                                   {s.nomorTelpon && (
-                                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>📞 {s.nomorTelpon}</p>
+                                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", marginRight: 4 }}>
+                                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.15 6.15l1.28-1.28a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+                                      </svg>
+                                      {s.nomorTelpon}
+                                    </p>
                                   )}
                                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 8 }}>
                                     <span style={badgeStyle}>{s.relasi}</span>
@@ -1027,8 +1066,20 @@ export default function AdminRetreat() {
         </div>
       )}
 
-      {/* ── SCANNER MODAL ── */}
+      {/* ── QR SCANNER MODAL ── */}
       {showScanner && <QRScanner onScan={stableOnScan} onClose={() => setShowScanner(false)} />}
+
+      {/* ── PAPER FORM SCANNER MODAL ── */}
+      {showPaperScanner && (
+        <PaperFormScanner
+          apiKey={process.env.NEXT_PUBLIC_VISION_API_KEY!}
+          onClose={() => setShowPaperScanner(false)}
+          onSaved={async () => {
+            const fresh = await getAllRegistrations();
+            setRegistrations(fresh);
+          }}
+        />
+      )}
 
       {/* ── SCAN RESULT POPUP ── */}
       {scannedReg && (
@@ -1036,7 +1087,11 @@ export default function AdminRetreat() {
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 }}>
             {scanMsg === "status belum di approve admin" ? (
               <div style={{ textAlign: "center", marginBottom: 16 }}>
-                <div style={{ width: 72, height: 72, background: "#fef2f2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontSize: 28 }}>⚠️</div>
+                <div style={{ width: 72, height: 72, background: "#fef2f2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                </div>
                 <p style={{ margin: 0, fontWeight: 700, color: "#dc2626", fontSize: 15 }}>Belum Di-approve Admin</p>
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "#94a3b8" }}>{scannedReg.members[0].namaLengkap}</p>
               </div>
@@ -1070,7 +1125,11 @@ export default function AdminRetreat() {
       {scanError && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 340, textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, background: "#fef2f2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px", fontSize: 24 }}>🔍</div>
+            <div style={{ width: 56, height: 56, background: "#fef2f2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </div>
             <p style={{ margin: "0 0 6px", fontWeight: 700, fontSize: 15, color: "#dc2626" }}>QR Tidak Ditemukan</p>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8" }}>{scanError}</p>
             <button onClick={() => setScanError("")} style={{ width: "100%", padding: "13px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>
@@ -1175,8 +1234,6 @@ export default function AdminRetreat() {
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
             <div style={{ background: "#fff", borderRadius: 18, padding: 24, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-
-              {/* Header */}
               <div style={{ marginBottom: 20 }}>
                 <h2 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 800, color: "#1e293b" }}>
                   Gabungkan Pendaftaran
@@ -1186,7 +1243,6 @@ export default function AdminRetreat() {
                 </p>
               </div>
 
-              {/* Pick main applicant */}
               <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Pilih Pendaftar Utama
               </p>
@@ -1207,13 +1263,11 @@ export default function AdminRetreat() {
                         transition: "all 0.15s",
                       }}
                     >
-                      {/* Radio */}
                       <div style={{
                         width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
                         border: isMain ? "6px solid #ea580c" : "2px solid #cbd5e1",
                         background: "#fff", transition: "all 0.15s",
                       }} />
-                      {/* Avatar */}
                       <div style={{
                         width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                         background: color, display: "flex", alignItems: "center",
@@ -1221,7 +1275,6 @@ export default function AdminRetreat() {
                       }}>
                         {initials}
                       </div>
-                      {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1e293b" }}>
                           {reg.members[0].namaLengkap}
@@ -1235,7 +1288,6 @@ export default function AdminRetreat() {
                 })}
               </div>
 
-              {/* Preview merged result */}
               {mergeMainId && (() => {
                 const mainReg = registrations.find((r) => r.id === mergeMainId)!;
                 const secId = mergeSelected.find((id) => id !== mergeMainId)!;
@@ -1268,7 +1320,6 @@ export default function AdminRetreat() {
                 );
               })()}
 
-              {/* Actions */}
               <div style={{ display: "flex", gap: 10 }}>
                 <button
                   onClick={() => { setShowMergeModal(false); setMergeMainId(null); }}
