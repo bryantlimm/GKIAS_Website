@@ -463,7 +463,7 @@ export default function AdminRetreat() {
             </button>
 
             {/* Paper form scanner button */}
-            {/* <button
+            <button
               onClick={() => setShowPaperScanner(true)}
               style={{
                 flex: 1,
@@ -477,9 +477,9 @@ export default function AdminRetreat() {
             >
               <FormScanIcon />
               Scan Form
-            </button> */}
+            </button>
             {/* Paper form scanner button (Disabled / Coming Soon) */}
-            <button
+            {/* <button
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
               style={{
@@ -497,7 +497,7 @@ export default function AdminRetreat() {
             >
               <FormScanIcon />
               {isHovered ? "Coming Soon" : "Scan Form"}
-            </button>
+            </button> */}
             
             {/* QR scanner button */}
             <button
@@ -582,10 +582,10 @@ export default function AdminRetreat() {
           {registrations.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               <span style={{ background: "#eff3ff", color: "#3b5bdb", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {registrations.length} total
+                {registrations.reduce((sum, reg) => sum + reg.members.length, 0)} total (main + sub)
               </span>
               <span style={{ background: "#fefce8", color: "#ca8a04", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {registrations.filter(r => r.status === "registered").length} menunggu
+                {registrations.filter(r => r.status === "registered").length} menunggu (main)
               </span>
               <span style={{ background: "#f0fdf4", color: "#16a34a", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
                 {registrations.filter(r => r.status === "checked_in").length} checked in

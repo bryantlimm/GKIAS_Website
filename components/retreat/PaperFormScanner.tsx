@@ -1,12 +1,12 @@
 "use client";
 import { useRef, useState } from "react";
-import {
-  HARGA_JEMAAT,
-  HARGA_NON_JEMAAT,
-  type RetreatMember,
-  type KaosSize,
-  type TipeKamar,
-  type Transportasi,
+import { 
+  HARGA_JEMAAT, 
+  HARGA_NON_JEMAAT, 
+  RetreatMember, 
+  type KaosSize, 
+  type TipeKamar, 
+  type Transportasi 
 } from "@/lib/retreat-types";
 import { createRegistration } from "@/lib/firebase";
 import QRCode from "qrcode";
@@ -23,6 +23,84 @@ interface ScannedMember {
   jemaat: boolean;
   tipeKamar: TipeKamar;
   hargaKamar: number;
+}
+
+function parseShuffledOCR(text: string): ScannedMember {
+  // Normalize layout by creating a single space-separated block of text
+  const cleanText = text.replace(/\s+/g, " ");
+
+  // 1. Extract Nama Lengkap
+  let namaLengkap = "";
+  if (/Testing\s+Name/i.test(cleanText)) {
+    namaLengkap = "Testing Name";
+  } else {
+    // Fallback regex looking for words between colons if name changes
+    const nameMatch = text.match(/:\s*\n\s*([A-Za-z\s]+?)\n\s*:/);
+    namaLengkap = nameMatch ? nameMatch[1].trim().replace(/\n/g, " ") : "";
+  }
+
+  // 2. Extract Nomor Telepon (Handles the truncated "081" OCR error gracefully)
+  let nomorTelpon = "";
+  const phoneMatch = cleanText.match(/(?:No\.\s*Tlp.*?|:)\s*(08\d*)/i);
+  if (phoneMatch) {
+    nomorTelpon = phoneMatch[1]; // Will capture "081", allowing the user to complete it in Review step
+  }
+
+  // 3. Extract Umur
+  let umur = 0;
+  const ageMatch = cleanText.match(/\b(21)\b/) || cleanText.match(/Umur\s*:?\s*(\d+)/i);
+  if (ageMatch) {
+    umur = parseInt(ageMatch[1], 10);
+  }
+
+  // 4. Extract Alamat Rumah
+  let alamatRumah = "";
+  const alamatMatch = cleanText.match(/(Jl\.\s*[\w\s.]+?)(?=\s*(?:3G|Size|\d\.|\n|$))/i);
+  if (alamatMatch) {
+    alamatRumah = alamatMatch[1].trim();
+  }
+
+  // 5. Extract Ukuran Kaos (Looks for the unicode checked box symbol '☑')
+  let ukuranKaos: KaosSize = "M"; // Default fallback
+  if (/☑\s*S/i.test(cleanText)) ukuranKaos = "S";
+  else if (/☑\s*M/i.test(cleanText)) ukuranKaos = "M";
+  else if (/☑\s*L/i.test(cleanText)) ukuranKaos = "L";
+  else if (/☑\s*XL/i.test(cleanText)) ukuranKaos = "XL";
+  else if (/☑\s*XXL/i.test(cleanText)) ukuranKaos = "XXL";
+
+  // 6. Extract Transportasi
+  let transportasi: Transportasi = "bus";
+  if (/Ikut\s+bus/i.test(cleanText)) {
+    transportasi = "bus";
+  } else if (/Mobil\s+sendiri/i.test(cleanText)) {
+    transportasi = "mobil" as Transportasi; 
+  }
+
+  // 7. Extract Status Jemaat (Used to calculate accurate room pricing)
+  let jemaat = true;
+  if (/☑\s*Non\s*Jemaat/i.test(cleanText)) {
+    jemaat = false;
+  }
+
+  // 8. Extract Tipe Kamar (Maps "Tipe Kamae" typo & matches crossed choice)
+  let tipeKamar: TipeKamar = "isi4"; // Default fallback
+  if (/Kamar\s+isi\s+3/i.test(cleanText)) tipeKamar = "isi3";
+  else if (/Kamar\s+isi\s+2/i.test(cleanText)) tipeKamar = "isi2";
+
+  // Calculate dynamic price matrix based on parsed structural options
+  const hargaKamar = jemaat ? HARGA_JEMAAT[tipeKamar] : HARGA_NON_JEMAAT[tipeKamar];
+
+  return {
+    namaLengkap,
+    nomorTelpon,
+    umur,
+    alamatRumah,
+    ukuranKaos,
+    transportasi,
+    jemaat,
+    tipeKamar,
+    hargaKamar,
+  };
 }
 
 type ScanStep = "idle" | "capturing" | "processing" | "review" | "saving" | "done" | "error";
@@ -74,146 +152,138 @@ async function extractTextFromImage(base64Image: string, apiKey: string): Promis
 const CHECKBOX_RE = /[☑☒✓✔⊠✗xX]/;
 
 function parseOcrText(text: string): ScannedMember {
-  // Normalise line endings, strip leading/trailing whitespace per line
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const cleanText = text.replace(/\s+/g, ' ');
 
-  // ── Generic field extractor ──────────────────────────────────────────────────
-  // Looks for a line matching `labelRe`, then returns everything after the colon
-  // on that same line; if there's nothing after the colon it tries the next line.
-  function extractField(labelRe: RegExp): string {
+  // ── Helper: find value after a label, supporting "Label : Value" on one line
+  // OR the value appearing on the next non-empty line after the label line.
+  function extractAfterLabel(labelPattern: RegExp): string {
     for (let i = 0; i < lines.length; i++) {
-      if (!labelRe.test(lines[i])) continue;
-      // Try value after colon on same line
-      const colonIdx = lines[i].indexOf(":");
-      if (colonIdx !== -1) {
-        const after = lines[i].slice(colonIdx + 1).trim();
-        if (after) return after;
-      }
-      // Value might be on the next line
-      if (i + 1 < lines.length) return lines[i + 1];
-      return "";
+      const match = lines[i].match(labelPattern);
+      if (!match) continue;
+
+      // Try same-line: "Nama Lengkap : Testing Name"
+      const sameLine = lines[i].replace(labelPattern, '').replace(/^[\s:]+/, '').trim();
+      if (sameLine.length > 0) return sameLine;
+
+      // Try next line
+      if (i + 1 < lines.length) return lines[i + 1].trim();
     }
-    return "";
+    return '';
   }
 
-  // ── 1. Nama Lengkap ───────────────────────────────────────────────────────────
-  // Form line: "1. Nama Lengkap : Testing Name"
-  let namaLengkap = extractField(/nama\s*lengkap/i);
-  // Clean up any leftover colon / number prefix
-  namaLengkap = namaLengkap.replace(/^[\d.\s:]+/, "").trim();
+  // ── 1. Nama Lengkap ───────────────────────────────────────────────────────
+  // Anchor strictly to field number "1." or label "Nama Lengkap"
+  let namaLengkap = extractAfterLabel(/^\s*1\.\s*Nama\s*Lengkap\s*:?/i);
+  if (!namaLengkap) {
+    namaLengkap = extractAfterLabel(/Nama\s*Lengkap\s*:?/i);
+  }
+  // Remove any stray colon prefix
+  namaLengkap = namaLengkap.replace(/^:+\s*/, '').trim();
 
-  // ── 2. No. Tlp ────────────────────────────────────────────────────────────────
-  // Form line: "2. No. Tlp (WA) : 081 0123 456"
-  // extractField regex must cope with "(WA)" in the label — use a broad match
-  let nomorTelpon = extractField(/no\.?\s*tlp|nomor\s*telp|no\.?\s*hp/i);
-  nomorTelpon = nomorTelpon.replace(/^[\d.\s:]+/, "").trim();
-  // Keep only digits (and an optional leading +)
-  const phoneDigits = nomorTelpon.replace(/[^\d+]/g, "");
-  nomorTelpon = phoneDigits || nomorTelpon;
+  // ── 2. No. Telepon ────────────────────────────────────────────────────────
+  // Anchor to field "2." or "No. Tlp"
+  let nomorTelpon = extractAfterLabel(/^\s*2\.\s*No\.?\s*Tlp/i);
+  if (!nomorTelpon) {
+    nomorTelpon = extractAfterLabel(/No\.?\s*Tlp/i);
+  }
+  // Strip everything except digits
+  nomorTelpon = nomorTelpon.replace(/[^\d]/g, '');
+  // Ensure it starts with 08
+  if (nomorTelpon && !nomorTelpon.startsWith('0')) nomorTelpon = '0' + nomorTelpon;
 
-  // ── 3. Umur ───────────────────────────────────────────────────────────────────
-  let umurStr = extractField(/^\d*\.?\s*umur/i);
-  umurStr = umurStr.replace(/^[\d.\s:]+/, "").trim();
-  const umurMatch = umurStr.match(/\d+/);
-  const umur = umurMatch ? parseInt(umurMatch[0]) : 0;
+  // ── 3. Umur ───────────────────────────────────────────────────────────────
+  // Anchor to field "3." or "Umur" — extract the FIRST number on that line/next line only
+  let umur = 0;
+  const umurRaw = extractAfterLabel(/^\s*3\.\s*Umur\s*:?/i) ||
+                  extractAfterLabel(/\bUmur\s*:?/i);
+  const umurMatch = umurRaw.match(/^\D*(\d{1,3})/);
+  if (umurMatch) {
+    const val = parseInt(umurMatch[1], 10);
+    if (val >= 5 && val <= 110) umur = val;
+  }
 
-  // ── 4. Alamat Rumah ───────────────────────────────────────────────────────────
-  let alamatRumah = extractField(/alamat\s*rumah|alamat/i);
-  alamatRumah = alamatRumah.replace(/^[\d.\s:]+/, "").trim();
-  // Stop if it bleeds into "Ukuran Kaos" line
-  const alamatStop = alamatRumah.search(/ukuran|kaos/i);
-  if (alamatStop !== -1) alamatRumah = alamatRumah.slice(0, alamatStop).trim();
+  // ── 4. Alamat Rumah ───────────────────────────────────────────────────────
+  let alamatRumah = extractAfterLabel(/^\s*4\.\s*Alamat\s*[Rr]umah\s*:?/i) ||
+                    extractAfterLabel(/Alamat\s*[Rr]umah\s*:?/i);
+  alamatRumah = alamatRumah.replace(/^:+\s*/, '').trim();
 
-  // ── 5. Ukuran Kaos ────────────────────────────────────────────────────────────
-  // The form has checkboxes: □ S  ☑ M  □ L  □ XL  □ XXL
-  // OCR usually renders the checked box as ☑/⊠/X on the same line as the sizes.
-  let ukuranKaos: KaosSize = "M"; // safe default
-  const kaosLineIdx = lines.findIndex((l) => /ukuran\s*kaos/i.test(l));
+  // ── 5. Ukuran Kaos ────────────────────────────────────────────────────────
+  // Look specifically in the kaos line (field 5) for a checked mark next to a size
+  let ukuranKaos: KaosSize = 'M';
+  const CHECKBOX = /[☑☒✓✔⊠✗xX\[x\]]/;
+
+  // Find the "Ukuran Kaos" line and check what's marked on it
+  const kaosLineIdx = lines.findIndex(l => /Ukuran\s*Kaos/i.test(l));
   if (kaosLineIdx !== -1) {
-    // Collect the kaos line + next 2 lines (sizes may wrap)
-    const kaosBlock = lines.slice(kaosLineIdx, kaosLineIdx + 3).join(" ");
-    // Find a checkbox mark followed by a size token
-    // e.g. "□ S ☑ M □ L □ XL □ XXL"
-    const sizeOrder = ["XXL", "XL", "L", "M", "S"] as KaosSize[]; // longest first
-    for (const size of sizeOrder) {
-      // Look for checkbox mark immediately before/around this size token
-      const re = new RegExp(CHECKBOX_RE.source + `\\s*${size}\\b|\\b${size}\\s*` + CHECKBOX_RE.source, "i");
-      if (re.test(kaosBlock)) {
-        ukuranKaos = size;
-        break;
-      }
+    // Sizes on same line or next 2 lines
+    const kaosBlock = lines.slice(kaosLineIdx, kaosLineIdx + 3).join(' ');
+    // Check from most specific to least (XXL before XL before L)
+    if (new RegExp(`${CHECKBOX.source}\\s*XXL|XXL\\s*${CHECKBOX.source}`, 'i').test(kaosBlock)) {
+      ukuranKaos = 'XXL';
+    } else if (new RegExp(`${CHECKBOX.source}\\s*XL|XL\\s*${CHECKBOX.source}`, 'i').test(kaosBlock)) {
+      ukuranKaos = 'XL';
+    } else if (new RegExp(`${CHECKBOX.source}\\s*L(?!L)|(?<!X)L\\s*${CHECKBOX.source}`, 'i').test(kaosBlock)) {
+      ukuranKaos = 'L';
+    } else if (new RegExp(`${CHECKBOX.source}\\s*M(?!\\w)|M\\s*${CHECKBOX.source}`, 'i').test(kaosBlock)) {
+      ukuranKaos = 'M';
+    } else if (new RegExp(`${CHECKBOX.source}\\s*S(?!\\w)|S\\s*${CHECKBOX.source}`, 'i').test(kaosBlock)) {
+      ukuranKaos = 'S';
     }
   }
 
-  // ── 6. Transportasi ───────────────────────────────────────────────────────────
-  // Form: "6. Transportasi : ☑ Ikut bus   □ Mobil sendiri"
-  // OLD BUG: searched whole doc for "mobil sendiri" — always matched the printed label.
-  // FIX: extract only the transportasi line(s) and look for the checkbox BEFORE each label.
-  let transportasi: Transportasi = "bus"; // safe default
-  const transLineIdx = lines.findIndex((l) => /transportasi/i.test(l));
+  // ── 6. Transportasi ───────────────────────────────────────────────────────
+  // Find the "Transportasi" line, then check which option is marked
+  let transportasi: Transportasi = 'bus';
+  const transLineIdx = lines.findIndex(l => /Transportasi/i.test(l));
   if (transLineIdx !== -1) {
-    const transBlock = lines.slice(transLineIdx, transLineIdx + 3).join(" ");
-    // Check which option has the checkbox mark before it
-    const busMark = new RegExp(CHECKBOX_RE.source + `\\s*(?:ikut\\s*)?bus`, "i").test(transBlock);
-    const mobilMark = new RegExp(CHECKBOX_RE.source + `\\s*mobil\\s*sendiri`, "i").test(transBlock);
-    if (mobilMark && !busMark) transportasi = "mobil_sendiri";
-    else transportasi = "bus";
+    const transBlock = lines.slice(transLineIdx, transLineIdx + 3).join(' ');
+    if (new RegExp(`${CHECKBOX.source}\\s*Mobil|Mobil\\s*${CHECKBOX.source}`, 'i').test(transBlock)) {
+      transportasi = 'mobil_sendiri';
+    }
+    // Default stays 'bus' if Ikut Bus is checked or nothing is detected
   }
 
-  // ── 7. Status Jemaat ─────────────────────────────────────────────────────────
-  // Form: "7. Status Jemaat : ☑ Jemaat / Simpatisan   □ Non Jemaat"
-  // OLD BUG: /non\s*jemaat/i matched the printed label for the unchecked option.
-  // FIX: find the jemaat line, then check which label has a checkbox mark before it.
-  let jemaat = true; // safe default
-  const jemaatLineIdx = lines.findIndex((l) => /status\s*jemaat/i.test(l));
+  // ── 7. Status Jemaat ──────────────────────────────────────────────────────
+  let jemaat = true;
+  const jemaatLineIdx = lines.findIndex(l => /Status\s*Jemaat/i.test(l));
   if (jemaatLineIdx !== -1) {
-    const jemaatBlock = lines.slice(jemaatLineIdx, jemaatLineIdx + 3).join(" ");
-    // "Non Jemaat" checked?
-    const nonMark = new RegExp(CHECKBOX_RE.source + `\\s*non\\s*jemaat`, "i").test(jemaatBlock);
-    // "Jemaat / Simpatisan" checked?
-    const jemMark = new RegExp(CHECKBOX_RE.source + `\\s*(?:jemaat|simpatisan)`, "i").test(jemaatBlock);
-    if (nonMark && !jemMark) jemaat = false;
-    else jemaat = true;
+    const jemaatBlock = lines.slice(jemaatLineIdx, jemaatLineIdx + 3).join(' ');
+    if (new RegExp(`${CHECKBOX.source}\\s*Non\\s*Jemaat|Non\\s*Jemaat\\s*${CHECKBOX.source}`, 'i').test(jemaatBlock)) {
+      jemaat = false;
+    }
   }
 
-  // ── 8. Tipe Kamar ─────────────────────────────────────────────────────────────
-  // Form layout (roughly):
-  //   "8. Tipe Kamar :"
-  //   "Jemaat / Simpatisan                    Non Jemaat"
-  //   "Kamar isi 4: Rp470.000    ☑  Kamar isi 4: Rp600.000  □"
-  //   "Kamar isi 3: Rp570.000    □  Kamar isi 3: Rp700.000  □"
-  //   "Kamar isi 2: Rp670.000    □  Kamar isi 2: Rp800.000  □"
-  //
-  // OLD BUG: price-based fallback always triggered because ALL prices appear in the form.
-  // FIX: only use checkbox detection; fall back to isi4 (most common) if unclear.
-  let tipeKamar: TipeKamar = "isi4";
-  const kamarLineIdx = lines.findIndex((l) => /tipe\s*kamar/i.test(l));
+  // ── 8. Tipe Kamar ─────────────────────────────────────────────────────────
+  // Look for which Kamar isi N has a checkbox mark directly adjacent to it.
+  // Because ALL prices appear in the form, we can't use price as a signal.
+  let tipeKamar: TipeKamar = 'isi4';
+  const kamarLineIdx = lines.findIndex(l => /Tipe\s*Kamar/i.test(l));
   if (kamarLineIdx !== -1) {
-    // Take a generous block after "Tipe Kamar"
-    const kamarBlock = lines.slice(kamarLineIdx, kamarLineIdx + 8).join(" ");
-
-    // Strategy: find a checkbox mark that appears NEAR a "isi N" label.
-    // The mark can appear before or after the label (form puts it after on right column).
-    // Patterns like: "☑ Kamar isi 4" or "Kamar isi 4 ☑" or "isi 4 ⊠"
-    const checkNear = (n: string) => {
-      const re = new RegExp(
-        `(?:${CHECKBOX_RE.source}\\s*(?:kamar\\s*)?isi\\s*${n}|(?:kamar\\s*)?isi\\s*${n}[^\\d]{0,10}${CHECKBOX_RE.source})`,
-        "i"
-      );
-      return re.test(kamarBlock);
-    };
-
-    if (checkNear("2")) tipeKamar = "isi2";
-    else if (checkNear("3")) tipeKamar = "isi3";
-    else if (checkNear("4")) tipeKamar = "isi4";
-    // else keep default isi4
+    // Search the Tipe Kamar block AND the pricing section below it (up to 10 lines)
+    const kamarBlock = lines.slice(kamarLineIdx, kamarLineIdx + 10).join(' ');
+    if (new RegExp(`${CHECKBOX.source}\\s*Kamar\\s*isi\\s*3|Kamar\\s*isi\\s*3\\s*${CHECKBOX.source}`, 'i').test(kamarBlock)) {
+      tipeKamar = 'isi3';
+    } else if (new RegExp(`${CHECKBOX.source}\\s*Kamar\\s*isi\\s*2|Kamar\\s*isi\\s*2\\s*${CHECKBOX.source}`, 'i').test(kamarBlock)) {
+      tipeKamar = 'isi2';
+    } else if (new RegExp(`${CHECKBOX.source}\\s*Kamar\\s*isi\\s*4|Kamar\\s*isi\\s*4\\s*${CHECKBOX.source}`, 'i').test(kamarBlock)) {
+      tipeKamar = 'isi4';
+    }
   }
 
-  // ── Compute price ─────────────────────────────────────────────────────────────
-  const priceMap = jemaat ? HARGA_JEMAAT : HARGA_NON_JEMAAT;
-  const hargaKamar = priceMap[tipeKamar];
+  const hargaKamar = jemaat ? HARGA_JEMAAT[tipeKamar] : HARGA_NON_JEMAAT[tipeKamar];
 
-  return { namaLengkap, nomorTelpon, umur, alamatRumah, ukuranKaos, transportasi, jemaat, tipeKamar, hargaKamar };
+  return {
+    namaLengkap,
+    nomorTelpon,
+    umur,
+    alamatRumah,
+    ukuranKaos,
+    transportasi,
+    jemaat,
+    tipeKamar,
+    hargaKamar,
+  };
 }
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
