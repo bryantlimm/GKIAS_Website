@@ -1087,7 +1087,7 @@ export default function AdminRetreat() {
         </div>
       )}
 
-      {/* ── QR SCANNER MODAL ── */}
+      {/* ── QR SCANNER MODAL ── */} 
       {showScanner && <QRScanner onScan={stableOnScan} onClose={() => setShowScanner(false)} />}
 
       {/* ── PAPER FORM SCANNER MODAL ── */}
