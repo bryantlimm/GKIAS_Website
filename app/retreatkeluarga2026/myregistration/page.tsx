@@ -65,7 +65,7 @@ export default function MyRegistrationPage() {
       const snap = await getDocs(q);
 
       const match = snap.docs.find(
-        (d) => d.data().mainNama?.toLowerCase() === nama.toLowerCase()
+        (d) => d.data().mainNama?.trim().toLowerCase() === nama.toLowerCase()
       );
 
       if (!match) {

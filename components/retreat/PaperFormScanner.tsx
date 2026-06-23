@@ -464,8 +464,8 @@ export default function PaperFormScanner({
       const tempId = `reg_paper_${Date.now()}`;
       const qrDataUrl = await QRCode.toDataURL(tempId, { width: 300 });
       await createRegistration({
-        mainNama: parsed.namaLengkap,
-        mainTelpon: parsed.nomorTelpon,
+        mainNama: parsed.namaLengkap.trim(),
+        mainTelpon: parsed.nomorTelpon.trim(),
         status: "registered",
         qrCode: qrDataUrl,
         paymentProofUrl: "",
