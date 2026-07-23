@@ -13,6 +13,8 @@ import {
   updateMemberInfo,
   uploadRetreatImage,
   mergeRegistrations,
+  deleteRegistrationMember,
+  deleteRegistration,
 } from "@/lib/firebase";
 import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
 import { onAuthStateChanged } from "firebase/auth";
@@ -114,6 +116,15 @@ const EditIcon = () => (
   </svg>
 );
 
+const DeleteIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+    <path d="M10 11v6M14 11v6"/>
+    <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+  </svg>
+);
+
 const MergeIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M8 7h8M8 12h8M8 17h4"/>
@@ -193,6 +204,15 @@ export default function AdminRetreat() {
   // Payment proof modal
   const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
 
+  // Delete member modal
+  const [deleteTarget, setDeleteTarget] = useState<{
+    regId: string;
+    memberIdx: number;
+    memberName: string;
+    isMain: boolean;
+  } | null>(null);
+  const [deletingTarget, setDeletingTarget] = useState(false);
+
   // Edit member modal
   const [editingRegId, setEditingRegId] = useState<string | null>(null);
   const [editingMemberIdx, setEditingMemberIdx] = useState<number | null>(null);
@@ -257,7 +277,6 @@ export default function AdminRetreat() {
     if (found.status === "checked_in") { setScannedReg(found); }
   }, [registrations]);
 
-  const [isHovered, setIsHovered] = useState(false);
   useEffect(() => { handleScanRef.current = handleScan; }, [handleScan]);
   const stableOnScan = useCallback((qrId: string) => { handleScanRef.current(qrId); }, []);
 
@@ -321,6 +340,29 @@ export default function AdminRetreat() {
     setEditingRegId(null);
     setEditingMemberIdx(null);
     setEditFormData({ namaLengkap: "", nomorTelpon: "", ukuranKaos: "M", transportasi: "bus" });
+  }
+
+  async function handleDeleteTarget(choice: "member" | "registration") {
+    if (!deleteTarget) return;
+
+    setDeletingTarget(true);
+    try {
+      const reg = registrations.find((item) => item.id === deleteTarget.regId);
+      if (choice === "registration") {
+        await deleteRegistration(deleteTarget.regId);
+      } else {
+        await deleteRegistrationMember(deleteTarget.regId, deleteTarget.memberIdx, reg?.members || []);
+      }
+
+      const fresh = await getAllRegistrations();
+      setRegistrations(fresh);
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting registrant:", error);
+      alert("Gagal menghapus data: " + String(error));
+    } finally {
+      setDeletingTarget(false);
+    }
   }
 
   async function handleSaveConfig() {
@@ -697,19 +739,34 @@ export default function AdminRetreat() {
 
                         {/* Edit button */}
                         {!mergeMode && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openEditMember(reg.id!, 0, main); }}
-                            title="Edit informasi peserta"
-                            style={{
-                              flexShrink: 0, display: "flex", alignItems: "center", gap: 6,
-                              padding: "6px 10px", background: "#f1f5f9", color: "#64748b",
-                              border: "1.5px solid #e2e8f0", borderRadius: 6,
-                              cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-                              minHeight: 32,
-                            }}
-                          >
-                            <EditIcon />
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEditMember(reg.id!, 0, main); }}
+                              title="Edit informasi peserta"
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "6px 10px", background: "#f1f5f9", color: "#64748b",
+                                border: "1.5px solid #e2e8f0", borderRadius: 6,
+                                cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+                                minHeight: 32,
+                              }}
+                            >
+                              <EditIcon />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeleteTarget({ regId: reg.id!, memberIdx: 0, memberName: main.namaLengkap, isMain: true }); }}
+                              title="Hapus peserta utama"
+                              style={{
+                                display: "flex", alignItems: "center", gap: 6,
+                                padding: "6px 10px", background: "#fff5f5", color: "#dc2626",
+                                border: "1.5px solid #fecaca", borderRadius: 6,
+                                cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+                                minHeight: 32,
+                              }}
+                            >
+                              <DeleteIcon />
+                            </button>
+                          </div>
                         )}
 
                         {/* Status badge */}
@@ -855,22 +912,40 @@ export default function AdminRetreat() {
                                 }}>
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                                     <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "#1e293b", flex: 1 }}>{s.namaLengkap}</p>
-                                    <button
-                                      onClick={() => {
-                                        const memberIdx = reg.members.findIndex((m) => m === s);
-                                        if (memberIdx !== -1) openEditMember(reg.id!, memberIdx, s);
-                                      }}
-                                      title="Edit informasi peserta"
-                                      style={{
-                                        display: "flex", alignItems: "center", gap: 4,
-                                        padding: "4px 8px", background: "#f1f5f9", color: "#64748b",
-                                        border: "1.5px solid #e2e8f0", borderRadius: 5,
-                                        cursor: "pointer", fontSize: 11, fontFamily: "inherit",
-                                        flexShrink: 0, minHeight: 28,
-                                      }}
-                                    >
-                                      <EditIcon />
-                                    </button>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                                      <button
+                                        onClick={() => {
+                                          const memberIdx = reg.members.findIndex((m) => m === s);
+                                          if (memberIdx !== -1) openEditMember(reg.id!, memberIdx, s);
+                                        }}
+                                        title="Edit informasi peserta"
+                                        style={{
+                                          display: "flex", alignItems: "center", gap: 4,
+                                          padding: "4px 8px", background: "#f1f5f9", color: "#64748b",
+                                          border: "1.5px solid #e2e8f0", borderRadius: 5,
+                                          cursor: "pointer", fontSize: 11, fontFamily: "inherit",
+                                          flexShrink: 0, minHeight: 28,
+                                        }}
+                                      >
+                                        <EditIcon />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const memberIdx = reg.members.findIndex((m) => m === s);
+                                          if (memberIdx !== -1) setDeleteTarget({ regId: reg.id!, memberIdx, memberName: s.namaLengkap, isMain: false });
+                                        }}
+                                        title="Hapus peserta tambahan"
+                                        style={{
+                                          display: "flex", alignItems: "center", gap: 4,
+                                          padding: "4px 8px", background: "#fff5f5", color: "#dc2626",
+                                          border: "1.5px solid #fecaca", borderRadius: 5,
+                                          cursor: "pointer", fontSize: 11, fontFamily: "inherit",
+                                          flexShrink: 0, minHeight: 28,
+                                        }}
+                                      >
+                                        <DeleteIcon />
+                                      </button>
+                                    </div>
                                   </div>
                                   {s.nomorTelpon && (
                                     <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
@@ -1197,6 +1272,55 @@ export default function AdminRetreat() {
               style={{ width: "100%", padding: "13px", background: "#f1f5f9", color: "#475569", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}
             >
               Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE MEMBER MODAL ── */}
+      {deleteTarget && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1e293b" }}>
+              {deleteTarget.isMain ? "Hapus Peserta Utama" : "Hapus Peserta"}
+            </h2>
+            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+              Pilih tindakan untuk <strong>{deleteTarget.memberName}</strong>.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => handleDeleteTarget("member")}
+                disabled={deletingTarget}
+                style={{
+                  padding: "12px 14px", borderRadius: 10, border: "1.5px solid #fecaca",
+                  background: "#fff5f5", color: "#dc2626", fontWeight: 700,
+                  fontSize: 13, fontFamily: "inherit", cursor: deletingTarget ? "not-allowed" : "pointer",
+                }}
+              >
+                {deleteTarget.isMain ? "Hapus peserta utama saja" : "Hapus peserta ini saja"}
+              </button>
+              <button
+                onClick={() => handleDeleteTarget("registration")}
+                disabled={deletingTarget}
+                style={{
+                  padding: "12px 14px", borderRadius: 10, border: "1.5px solid #fecaca",
+                  background: "#fee2e2", color: "#b91c1c", fontWeight: 700,
+                  fontSize: 13, fontFamily: "inherit", cursor: deletingTarget ? "not-allowed" : "pointer",
+                }}
+              >
+                Hapus semua peserta dari pendaftaran ini
+              </button>
+            </div>
+            <button
+              onClick={() => setDeleteTarget(null)}
+              disabled={deletingTarget}
+              style={{
+                padding: "12px 14px", borderRadius: 10, background: "#f1f5f9", color: "#475569",
+                border: "1.5px solid #e2e8f0", fontWeight: 700, fontSize: 13,
+                fontFamily: "inherit", cursor: deletingTarget ? "not-allowed" : "pointer",
+              }}
+            >
+              {deletingTarget ? "Menghapus..." : "Batal"}
             </button>
           </div>
         </div>

@@ -2,11 +2,45 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/AuthContext';
+
+// Mobile-responsive styles
+const globalStyles = `
+  @media (max-width: 768px) {
+    table {
+      font-size: 12px !important;
+    }
+    table td, table th {
+      padding: 6px 8px !important;
+    }
+    [data-responsive-grid] {
+      grid-template-columns: 1fr !important;
+    }
+    [data-responsive-flex-wrap] {
+      flex-direction: column !important;
+    }
+  }
+  input::placeholder {
+    color: #4b5563 !important;
+  }
+  textarea::placeholder {
+    color: #4b5563 !important;
+  }
+`;
 import {
   collection, addDoc, getDocs, doc, deleteDoc,
   query, orderBy, Timestamp, getDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+// Inject mobile styles
+if (typeof document !== 'undefined') {
+  const styleEl = document.createElement('style');
+  styleEl.textContent = globalStyles;
+  if (!document.head.querySelector('style[data-service-events]')) {
+    styleEl.setAttribute('data-service-events', 'true');
+    document.head.appendChild(styleEl);
+  }
+}
 
 const TrashIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -360,7 +394,7 @@ function OfferingTable({
         <tbody>
           {rows.map((row, i) => (
             <tr key={row.nominal} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-              <td style={{ padding: '8px 10px', fontWeight: 600, color: '#1e293b' }}>{formatRp(row.nominal)}</td>
+              <td style={{ padding: '8px 10px', fontWeight: 600, color: '#000000' }}>{formatRp(row.nominal)}</td>
               <td style={{ padding: '6px 10px' }}>
                 <input
                   type="number"
@@ -407,7 +441,7 @@ function RegularAttendanceForm({
       <div style={{ display: 'flex', gap: 12 }}>
         {(['pria', 'wanita'] as const).map(g => (
           <div key={g} style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase' }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#000000', marginBottom: 5, textTransform: 'uppercase' }}>
               {g === 'pria' ? 'Pria' : 'Wanita'}
             </label>
             <input
@@ -420,7 +454,7 @@ function RegularAttendanceForm({
           </div>
         ))}
         <div style={{ flex: 1 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 5, textTransform: 'uppercase' }}>Total</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#000000', marginBottom: 5, textTransform: 'uppercase' }}>Total</label>
           <div style={{
             width: '100%', padding: '10px 12px', background: '#eff3ff',
             borderRadius: 8, fontSize: 16, textAlign: 'center', fontWeight: 800, color: '#3b5bdb',
@@ -430,7 +464,7 @@ function RegularAttendanceForm({
         </div>
       </div>
       <div>
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 5 }}>Catatan (opsional)</label>
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#000000', marginBottom: 5 }}>Catatan (opsional)</label>
         <input
           type="text"
           value={value.notes}
@@ -510,7 +544,7 @@ function SMAttendanceForm({
             <div style={{ background: '#eff3ff', padding: '9px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontWeight: 700, fontSize: 13, color: '#3b5bdb' }}>{cls.label}</span>
-                <span style={{ fontSize: 11, color: '#64748b', background: '#ffffff', padding: '2px 8px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 11, color: '#4b5563', background: '#ffffff', padding: '2px 8px', borderRadius: 20, border: '1px solid #e2e8f0' }}>
                   p {clsPria} · w {clsWanita} · Total {clsPria + clsWanita}
                 </span>
               </div>
@@ -522,7 +556,7 @@ function SMAttendanceForm({
             {/* Members */}
             <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {cls.members.length === 0 && (
-                <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Belum ada anggota</p>
+                <p style={{ margin: 0, fontSize: 12, color: '#4b5563', fontStyle: 'italic' }}>Belum ada anggota</p>
               )}
               {cls.members.map((m, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: '1px dashed #f1f5f9' }}>
@@ -531,10 +565,10 @@ function SMAttendanceForm({
                     background: m.gender === 'pria' ? '#dbeafe' : '#fce7f3',
                     color: m.gender === 'pria' ? '#1d4ed8' : '#be185d',
                   }}>{m.gender === 'pria' ? 'L' : 'P'}</span>
-                  <span style={{ flex: 1, fontSize: 13, color: '#1e293b' }}>{m.name}</span>
+                  <span style={{ flex: 1, fontSize: 13, color: '#000000' }}>{m.name}</span>
                   <button
                     onClick={() => removeMember(cls.id, idx)}
-                    style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
+                    style={{ background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}
                   >×</button>
                 </div>
               ))}
@@ -592,17 +626,17 @@ function SMAttendanceForm({
           <thead>
             <tr style={{ background: '#f1f5f9' }}>
               {['Kelas', 'Pria', 'Wanita', 'Total'].map(h => (
-                <th key={h} style={{ padding: '6px 12px', textAlign: h === 'Kelas' ? 'left' : 'center', color: '#64748b', fontWeight: 700 }}>{h}</th>
+                <th key={h} style={{ padding: '6px 12px', textAlign: h === 'Kelas' ? 'left' : 'center', color: '#000000', fontWeight: 700 }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {summary.map((s, i) => (
               <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ padding: '6px 12px', color: '#334155', fontWeight: 600 }}>{s.label}</td>
+                <td style={{ padding: '6px 12px', color: '#000000', fontWeight: 600 }}>{s.label}</td>
                 <td style={{ padding: '6px 12px', textAlign: 'center', color: '#1d4ed8' }}>{s.pria}</td>
                 <td style={{ padding: '6px 12px', textAlign: 'center', color: '#be185d' }}>{s.wanita}</td>
-                <td style={{ padding: '6px 12px', textAlign: 'center', fontWeight: 700, color: '#1e293b' }}>{s.pria + s.wanita}</td>
+                <td style={{ padding: '6px 12px', textAlign: 'center', fontWeight: 700, color: '#000000' }}>{s.pria + s.wanita}</td>
               </tr>
             ))}
           </tbody>
@@ -748,10 +782,10 @@ export default function ServiceEventsManager() {
 
   // ── Styles ──
   const s = {
-    label: { display: 'block', fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
-    input: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', color: '#1e293b', outline: 'none' },
+    label: { display: 'block', fontSize: 12, fontWeight: 700, color: '#000000', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
+    input: { width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', color: '#000000', outline: 'none' },
     section: { marginBottom: 28 },
-    sectionTitle: { fontSize: 14, fontWeight: 800, color: '#1e293b', marginBottom: 14, paddingBottom: 8, borderBottom: '2px solid #eff3ff' },
+    sectionTitle: { fontSize: 14, fontWeight: 800, color: '#000000', marginBottom: 14, paddingBottom: 8, borderBottom: '2px solid #eff3ff' },
   };
 
   // ── LIST VIEW ──
@@ -761,8 +795,8 @@ export default function ServiceEventsManager() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e293b' }}>Laporan Ibadah</h2>
-            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#94a3b8' }}>Kelola laporan kehadiran & persembahan ibadah</p>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#000000' }}>Laporan Ibadah</h2>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#4b5563' }}>Kelola laporan kehadiran & persembahan ibadah</p>
           </div>
           <button
             onClick={() => { resetForm(); setView('create'); }}
@@ -773,9 +807,9 @@ export default function ServiceEventsManager() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Memuat data...</div>
+          <div style={{ textAlign: 'center', padding: 40, color: '#4b5563' }}>Memuat data...</div>
         ) : events.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: 48, color: '#4b5563' }}>
             <p style={{ margin: 0, fontWeight: 600 }}>Belum ada laporan ibadah</p>
             <p style={{ margin: '4px 0 0', fontSize: 12 }}>Klik Buat Laporan untuk menambahkan</p>
           </div>
@@ -804,20 +838,20 @@ export default function ServiceEventsManager() {
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.ministry}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#94a3b8' }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#000000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.ministry}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 11, color: '#4b5563' }}>
                     {ev.description ? `"${ev.description}" · ` : ''}{formatDateShort(ev.date)}
                   </p>
                 </div>
 
                 {/* Stats */}
-                <div style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 16, flexShrink: 0, flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Hadir</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: '#1e293b' }}>{ev.attendance_count}</div>
+                    <div style={{ fontSize: 11, color: '#4b5563', fontWeight: 600 }}>Hadir</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: '#000000' }}>{ev.attendance_count}</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Persembahan</div>
+                    <div style={{ fontSize: 11, color: '#4b5563', fontWeight: 600 }}>Persembahan</div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: '#3b5bdb' }}>{formatRp(ev.offering_amount ?? 0)}</div>
                   </div>
                 </div>
@@ -851,8 +885,8 @@ export default function ServiceEventsManager() {
         {deleteConfirm && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: 320, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
-              <h3 style={{ margin: '0 0 8px', color: '#1e293b' }}>Hapus Laporan?</h3>
-              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#64748b' }}>Data laporan ini akan dihapus permanen dan tidak bisa dikembalikan.</p>
+              <h3 style={{ margin: '0 0 8px', color: '#000000' }}>Hapus Laporan?</h3>
+              <p style={{ margin: '0 0 20px', fontSize: 13, color: '#4b5563' }}>Data laporan ini akan dihapus permanen dan tidak bisa dikembalikan.</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => handleDelete(deleteConfirm)} style={{ flex: 1, padding: '9px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>Hapus</button>
                 <button onClick={() => setDeleteConfirm(null)} style={{ flex: 1, padding: '9px', background: '#f1f5f9', color: '#334155', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>Batal</button>
@@ -873,11 +907,11 @@ export default function ServiceEventsManager() {
 
     return (
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <button onClick={() => setView('list')} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#64748b', fontWeight: 700, fontSize: 13 }}>← Kembali</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+          <button onClick={() => setView('list')} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#000000', fontWeight: 700, fontSize: 13 }}>← Kembali</button>
           <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>{ev.ministry}</h2>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>{formatDate(ev.date)}</p>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#000000' }}>{ev.ministry}</h2>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#4b5563' }}>{formatDate(ev.date)}</p>
           </div>
           <button
             onClick={() => handleDownloadPDF(ev)}
@@ -888,28 +922,28 @@ export default function ServiceEventsManager() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }} data-responsive-grid>
           {[
             { label: 'Total Kehadiran', value: ev.attendance_count + ' orang', color: '#3b5bdb', bg: '#eff3ff' },
             { label: 'Total Persembahan', value: formatRp(ev.offering_amount ?? 0), color: '#16a34a', bg: '#f0fdf4' },
           ].map(stat => (
             <div key={stat.label} style={{ background: stat.bg, borderRadius: 10, padding: '16px 18px' }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: stat.color, textTransform: 'uppercase' }}>{stat.label}</p>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#000000', textTransform: 'uppercase' }}>{stat.label}</p>
               <p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: stat.color }}>{stat.value}</p>
             </div>
           ))}
         </div>
 
         {/* Attendance detail */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#1e293b' }}>Kehadiran</div>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, marginBottom: 16, overflow: 'auto' }}>
+          <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#000000' }}>Kehadiran</div>
           <div style={{ padding: 16 }}>
             {isSunday && smData?.classes ? (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#f1f5f9' }}>
                     {['Kelas', 'Pria', 'Wanita', 'Total'].map(h => (
-                      <th key={h} style={{ padding: '7px 12px', textAlign: h === 'Kelas' ? 'left' : 'center', color: '#64748b', fontWeight: 700 }}>{h}</th>
+                      <th key={h} style={{ padding: '7px 12px', textAlign: h === 'Kelas' ? 'left' : 'center', color: '#000000', fontWeight: 700 }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -919,37 +953,37 @@ export default function ServiceEventsManager() {
                     const w = cls.members.filter(m => m.gender === 'wanita').length;
                     return (
                       <tr key={cls.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                        <td style={{ padding: '7px 12px', fontWeight: 600 }}>{cls.label}</td>
-                        <td style={{ padding: '7px 12px', textAlign: 'center', color: '#1d4ed8' }}>{p}</td>
-                        <td style={{ padding: '7px 12px', textAlign: 'center', color: '#be185d' }}>{w}</td>
-                        <td style={{ padding: '7px 12px', textAlign: 'center', fontWeight: 700 }}>{p + w}</td>
+                        <td style={{ padding: '7px 12px', fontWeight: 600, color: '#000000' }}>{cls.label}</td>
+                        <td style={{ padding: '7px 12px', textAlign: 'center', color: '#1d4ed8', fontWeight: 600 }}>{p}</td>
+                        <td style={{ padding: '7px 12px', textAlign: 'center', color: '#be185d', fontWeight: 600 }}>{w}</td>
+                        <td style={{ padding: '7px 12px', textAlign: 'center', fontWeight: 700, color: '#000000' }}>{p + w}</td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
                   <tr style={{ background: '#eff3ff' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 800, color: '#3b5bdb' }}>TOTAL</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 800, color: '#000000' }}>TOTAL</td>
                     <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: '#1d4ed8' }}>
                       {smData.classes.reduce((s, c) => s + c.members.filter(m => m.gender === 'pria').length, 0)}
                     </td>
                     <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: '#be185d' }}>
                       {smData.classes.reduce((s, c) => s + c.members.filter(m => m.gender === 'wanita').length, 0)}
                     </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: '#3b5bdb', fontSize: 14 }}>{ev.attendance_count}</td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800, color: '#000000', fontSize: 14 }}>{ev.attendance_count}</td>
                   </tr>
                 </tfoot>
               </table>
             ) : (
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {[
                   { label: 'Pria', value: regData?.pria ?? 0 },
                   { label: 'Wanita', value: regData?.wanita ?? 0 },
                   { label: 'Total', value: ev.attendance_count },
                 ].map(item => (
-                  <div key={item.label} style={{ flex: 1, textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: 12 }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>{item.label}</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{item.value}</div>
+                  <div key={item.label} style={{ flex: 1, minWidth: 80, textAlign: 'center', background: '#f8fafc', borderRadius: 8, padding: 12 }}>
+                    <div style={{ fontSize: 11, color: '#4b5563', fontWeight: 700 }}>{item.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: '#000000' }}>{item.value}</div>
                   </div>
                 ))}
               </div>
@@ -958,22 +992,22 @@ export default function ServiceEventsManager() {
         </div>
 
         {/* Offering detail */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#1e293b' }}>Persembahan</div>
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'auto' }}>
+          <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 13, color: '#000000' }}>Persembahan</div>
           <div style={{ padding: 16 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f1f5f9' }}>
                   {['Nominal', 'Jumlah', 'Subtotal'].map(h => (
-                    <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Subtotal' ? 'right' : 'left', color: '#64748b', fontWeight: 700 }}>{h}</th>
+                    <th key={h} style={{ padding: '7px 10px', textAlign: h === 'Subtotal' ? 'right' : 'left', color: '#000000', fontWeight: 700 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {(ev.offering_breakdown ?? []).filter(r => r.qty > 0).map((row, i) => (
                   <tr key={row.nominal} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                    <td style={{ padding: '7px 10px', fontWeight: 600 }}>{formatRp(row.nominal)}</td>
-                    <td style={{ padding: '7px 10px', color: '#64748b' }}>× {row.qty}</td>
+                    <td style={{ padding: '7px 10px', fontWeight: 600, color: '#000000' }}>{formatRp(row.nominal)}</td>
+                    <td style={{ padding: '7px 10px', color: '#4b5563' }}>× {row.qty}</td>
                     <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 600, color: '#3b5bdb' }}>{formatRp(row.nominal * row.qty)}</td>
                   </tr>
                 ))}
@@ -995,11 +1029,11 @@ export default function ServiceEventsManager() {
   return (
     <div>
       {/* Back header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
-        <button onClick={() => { setView('list'); resetForm(); }} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#64748b', fontWeight: 700, fontSize: 13 }}>← Kembali</button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22, flexWrap: 'wrap' }}>
+        <button onClick={() => { setView('list'); resetForm(); }} style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', color: '#000000', fontWeight: 700, fontSize: 13 }}>← Kembali</button>
         <div>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>Buat Laporan Ibadah</h2>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>Langkah {formStep} dari 2</p>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#000000' }}>Buat Laporan Ibadah</h2>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#4b5563' }}>Langkah {formStep} dari 2</p>
         </div>
       </div>
 
@@ -1007,7 +1041,7 @@ export default function ServiceEventsManager() {
       <div style={{ display: 'flex', gap: 0, marginBottom: 24, background: '#f8fafc', borderRadius: 10, padding: 4, border: '1px solid #e2e8f0' }}>
         {[{ n: 1, label: 'Pilih Ibadah' }, { n: 2, label: 'Input Data' }].map(step => (
           <div key={step.n} style={{ flex: 1, textAlign: 'center', padding: '8px', borderRadius: 7, background: formStep === step.n ? '#3b5bdb' : 'transparent', transition: 'background 0.15s' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: formStep === step.n ? '#fff' : '#94a3b8' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: formStep === step.n ? '#fff' : '#4b5563' }}>
               {step.n}. {step.label}
             </span>
           </div>
@@ -1020,7 +1054,7 @@ export default function ServiceEventsManager() {
           <div style={s.section}>
             <p style={s.sectionTitle}>Pilih Jenis Ibadah</p>
             {loading ? (
-              <p style={{ color: '#94a3b8', fontSize: 13 }}>Memuat jadwal...</p>
+              <p style={{ color: '#4b5563', fontSize: 13 }}>Memuat jadwal...</p>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
                 {schedules.map(sch => {
@@ -1035,8 +1069,8 @@ export default function ServiceEventsManager() {
                         textAlign: 'left', transition: 'all 0.15s',
                       }}
                     >
-                      <div style={{ fontSize: 14, fontWeight: 700, color: active ? '#3b5bdb' : '#1e293b', marginBottom: 3 }}>{sch.name}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{sch.time}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: active ? '#3b5bdb' : '#000000', marginBottom: 3 }}>{sch.name}</div>
+                      <div style={{ fontSize: 12, color: '#4b5563' }}>{sch.time}</div>
                       {isSM(sch.name) && (
                         <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: '#f59e0b', background: '#fffbeb', padding: '2px 8px', borderRadius: 20, display: 'inline-block', border: '1px solid #fde68a' }}>
                           Sekolah Minggu
@@ -1075,7 +1109,7 @@ export default function ServiceEventsManager() {
             onClick={() => setFormStep(2)}
             style={{
               padding: '11px 28px', background: selectedSchedule ? '#3b5bdb' : '#e2e8f0',
-              color: selectedSchedule ? '#fff' : '#94a3b8', border: 'none', borderRadius: 8,
+              color: selectedSchedule ? '#fff' : '#4b5563', border: 'none', borderRadius: 8,
               cursor: selectedSchedule ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: 14,
             }}
           >
@@ -1088,12 +1122,12 @@ export default function ServiceEventsManager() {
       {formStep === 2 && selectedSchedule && (
         <div>
           {/* Selected service banner */}
-          <div style={{ background: '#eff3ff', borderRadius: 10, padding: '10px 16px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: '#eff3ff', borderRadius: 10, padding: '10px 16px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ flex: 1 }}>
               <span style={{ fontWeight: 800, color: '#3b5bdb', fontSize: 14 }}>{selectedSchedule.name}</span>
-              <span style={{ color: '#64748b', fontSize: 12, marginLeft: 8 }}>{selectedSchedule.time}</span>
+              <span style={{ color: '#4b5563', fontSize: 12, marginLeft: 8 }}>{selectedSchedule.time}</span>
             </div>
-            <span style={{ color: '#64748b', fontSize: 12 }}>{eventDate}</span>
+            <span style={{ color: '#4b5563', fontSize: 12 }}>{eventDate}</span>
           </div>
 
           {/* Attendance */}
@@ -1123,8 +1157,8 @@ export default function ServiceEventsManager() {
           </div>
 
           {/* Buttons */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => setFormStep(1)} style={{ padding: '11px 20px', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>← Kembali</button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button onClick={() => setFormStep(1)} style={{ padding: '11px 20px', background: '#f1f5f9', color: '#000000', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>← Kembali</button>
             <button
               onClick={handleSave}
               disabled={saving}

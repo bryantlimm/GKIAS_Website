@@ -102,6 +102,32 @@ export async function updateMemberInfo(
   await updateDoc(doc(db, "retreat2026_registrations", id), { members: updated });
 }
 
+export async function deleteRegistrationMember(
+  id: string,
+  memberIndex: number,
+  members: RetreatRegistration["members"]
+) {
+  const updatedMembers = members.filter((_, index) => index !== memberIndex);
+
+  if (updatedMembers.length === 0) {
+    await deleteDoc(doc(db, "retreat2026_registrations", id));
+    return { deleted: true };
+  }
+
+  const remainingMain = updatedMembers[0];
+  await updateDoc(doc(db, "retreat2026_registrations", id), {
+    members: updatedMembers,
+    mainNama: remainingMain?.namaLengkap || "",
+    mainTelpon: remainingMain?.nomorTelpon || "",
+  });
+
+  return { deleted: false };
+}
+
+export async function deleteRegistration(id: string) {
+  await deleteDoc(doc(db, "retreat2026_registrations", id));
+}
+
 // ── Storage ────────────────────────────────────────────────────────────────────
 export async function uploadPaymentProof(registrationId: string, file: File): Promise<string> {
   const storageRef = ref(storage, `retreat2026/payments/${registrationId}/proof`);
