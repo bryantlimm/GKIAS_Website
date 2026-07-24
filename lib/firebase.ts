@@ -6,7 +6,7 @@ import { collection, doc, getDoc, setDoc, addDoc, updateDoc,
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
   sendPasswordResetEmail, signOut } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import type { RetreatConfig, RetreatRegistration } from "./retreat-types";
+import { HARGA_JEMAAT, HARGA_NON_JEMAAT, type RetreatConfig, type RetreatRegistration } from "./retreat-types";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -34,6 +34,15 @@ export async function getRetreatConfig(): Promise<RetreatConfig | null> {
 
 export async function updateRetreatConfig(data: Partial<RetreatConfig>) {
   await setDoc(doc(db, "retreat2026", "config"), data, { merge: true });
+}
+
+function calculateRegistrationTotal(members: RetreatRegistration["members"], sponsorCount: number) {
+  const memberTotal = members.reduce((sum, member) => {
+    const price = member.hargaKamar ?? (member.jemaat ? HARGA_JEMAAT[member.tipeKamar] : HARGA_NON_JEMAAT[member.tipeKamar]);
+    return sum + price;
+  }, 0);
+
+  return memberTotal + sponsorCount * HARGA_JEMAAT.isi4;
 }
 
 // ── Registrations ──────────────────────────────────────────────────────────────
@@ -99,7 +108,16 @@ export async function updateMemberInfo(
 ) {
   const updated = [...members];
   updated[memberIndex] = { ...updated[memberIndex], ...memberData };
-  await updateDoc(doc(db, "retreat2026_registrations", id), { members: updated });
+
+  const registrationSnap = await getDoc(doc(db, "retreat2026_registrations", id));
+  const currentData = registrationSnap.exists() ? (registrationSnap.data() as Partial<RetreatRegistration>) : null;
+  const sponsorCount = typeof currentData?.sponsorCount === "number" ? currentData.sponsorCount : 0;
+  const totalAmount = calculateRegistrationTotal(updated, sponsorCount);
+
+  await updateDoc(doc(db, "retreat2026_registrations", id), {
+    members: updated,
+    totalAmount,
+  });
 }
 
 export async function deleteRegistrationMember(
@@ -115,10 +133,16 @@ export async function deleteRegistrationMember(
   }
 
   const remainingMain = updatedMembers[0];
+  const registrationSnap = await getDoc(doc(db, "retreat2026_registrations", id));
+  const currentData = registrationSnap.exists() ? (registrationSnap.data() as Partial<RetreatRegistration>) : null;
+  const sponsorCount = typeof currentData?.sponsorCount === "number" ? currentData.sponsorCount : 0;
+  const totalAmount = calculateRegistrationTotal(updatedMembers, sponsorCount);
+
   await updateDoc(doc(db, "retreat2026_registrations", id), {
     members: updatedMembers,
     mainNama: remainingMain?.namaLengkap || "",
     mainTelpon: remainingMain?.nomorTelpon || "",
+    totalAmount,
   });
 
   return { deleted: false };
@@ -150,9 +174,15 @@ export async function mergeRegistrations(
   // Combine: main's members first, then secondary's members
   const mergedMembers = [...mainReg.members, ...secondaryReg.members];
  
+  const registrationSnap = await getDoc(doc(db, "retreat2026_registrations", mainId));
+  const currentData = registrationSnap.exists() ? (registrationSnap.data() as Partial<RetreatRegistration>) : null;
+  const sponsorCount = typeof currentData?.sponsorCount === "number" ? currentData.sponsorCount : 0;
+  const totalAmount = calculateRegistrationTotal(mergedMembers, sponsorCount);
+
   // Write merged members onto the main registration
   await updateDoc(doc(db, "retreat2026_registrations", mainId), {
     members: mergedMembers,
+    totalAmount,
   });
  
   // Delete the secondary registration

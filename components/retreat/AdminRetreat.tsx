@@ -16,7 +16,13 @@ import {
   deleteRegistrationMember,
   deleteRegistration,
 } from "@/lib/firebase";
-import type { RetreatConfig, RetreatRegistration } from "@/lib/retreat-types";
+import {
+  HARGA_JEMAAT,
+  HARGA_NON_JEMAAT,
+  type RetreatConfig,
+  type RetreatRegistration,
+  type TipeKamar,
+} from "@/lib/retreat-types";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRef } from "react";
@@ -221,11 +227,15 @@ export default function AdminRetreat() {
     nomorTelpon: string;
     ukuranKaos: RetreatRegistration["members"][0]["ukuranKaos"];
     transportasi: RetreatRegistration["members"][0]["transportasi"];
+    jemaat: boolean;
+    tipeKamar: TipeKamar;
   }>({
     namaLengkap: "",
     nomorTelpon: "",
     ukuranKaos: "M",
     transportasi: "bus",
+    jemaat: true,
+    tipeKamar: "isi4",
   });
 
   // ── Merge state ──────────────────────────────────────────────────────────────
@@ -317,6 +327,8 @@ export default function AdminRetreat() {
       nomorTelpon: member.nomorTelpon,
       ukuranKaos: member.ukuranKaos,
       transportasi: member.transportasi,
+      jemaat: member.jemaat,
+      tipeKamar: member.tipeKamar,
     });
   }
 
@@ -324,13 +336,23 @@ export default function AdminRetreat() {
     if (editingRegId === null || editingMemberIdx === null) return;
     const reg = registrations.find((r) => r.id === editingRegId);
     if (!reg) return;
-    await updateMemberInfo(editingRegId, editingMemberIdx, editFormData, reg.members);
+
+    const memberData = {
+      ...editFormData,
+      hargaKamar: editFormData.jemaat
+        ? HARGA_JEMAAT[editFormData.tipeKamar]
+        : HARGA_NON_JEMAAT[editFormData.tipeKamar],
+    };
+
+    await updateMemberInfo(editingRegId, editingMemberIdx, memberData, reg.members);
     setRegistrations((prev) =>
       prev.map((r) => {
         if (r.id !== editingRegId) return r;
         const updated = [...r.members];
-        updated[editingMemberIdx] = { ...updated[editingMemberIdx], ...editFormData };
-        return { ...r, members: updated };
+        updated[editingMemberIdx] = { ...updated[editingMemberIdx], ...memberData };
+        const sponsorCount = r.sponsorCount || 0;
+        const totalAmount = updated.reduce((sum, member) => sum + (member.hargaKamar ?? (member.jemaat ? HARGA_JEMAAT[member.tipeKamar] : HARGA_NON_JEMAAT[member.tipeKamar])), 0) + sponsorCount * HARGA_JEMAAT.isi4;
+        return { ...r, members: updated, totalAmount };
       })
     );
     closeEditMember();
@@ -339,7 +361,7 @@ export default function AdminRetreat() {
   function closeEditMember() {
     setEditingRegId(null);
     setEditingMemberIdx(null);
-    setEditFormData({ namaLengkap: "", nomorTelpon: "", ukuranKaos: "M", transportasi: "bus" });
+    setEditFormData({ namaLengkap: "", nomorTelpon: "", ukuranKaos: "M", transportasi: "bus", jemaat: true, tipeKamar: "isi4" });
   }
 
   async function handleDeleteTarget(choice: "member" | "registration") {
@@ -1352,12 +1374,31 @@ export default function AdminRetreat() {
                 <option value="XL">XL</option><option value="XXL">XXL</option>
               </select>
             </div>
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Transportasi</label>
               <select value={editFormData.transportasi} onChange={(e) => setEditFormData((p) => ({ ...p, transportasi: e.target.value as RetreatRegistration["members"][0]["transportasi"] }))}
                 style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff", cursor: "pointer" }}
               >
                 <option value="bus">Bus</option><option value="mobil_sendiri">Mobil Sendiri</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Status Jemaat</label>
+              <select value={editFormData.jemaat ? "jemaat" : "non_jemaat"} onChange={(e) => setEditFormData((p) => ({ ...p, jemaat: e.target.value === "jemaat" }))}
+                style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff", cursor: "pointer" }}
+              >
+                <option value="jemaat">Jemaat / Simpatisan</option>
+                <option value="non_jemaat">Non Jemaat</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Tipe Kamar</label>
+              <select value={editFormData.tipeKamar} onChange={(e) => setEditFormData((p) => ({ ...p, tipeKamar: e.target.value as TipeKamar }))}
+                style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0", borderRadius: 8, padding: "10px 12px", fontSize: 13, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff", cursor: "pointer" }}
+              >
+                <option value="isi4">Kamar isi 4</option>
+                <option value="isi3">Kamar isi 3</option>
+                <option value="isi2">Kamar isi 2</option>
               </select>
             </div>
             <div style={{ display: "flex", gap: 10 }}>

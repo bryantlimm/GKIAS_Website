@@ -191,7 +191,11 @@ export default function MyRegistrationPage() {
             ? { ukuranKaos: editingValue as KaosSize }
             : { transportasi: editingValue as "bus" | "mobil_sendiri" }),
         };
-        return { ...prev, members: updatedMembers };
+        const totalAmount = updatedMembers.reduce(
+          (sum, member) => sum + (member.hargaKamar ?? 0),
+          0
+        ) + prev.sponsorCount * 470000;
+        return { ...prev, members: updatedMembers, totalAmount };
       });
 
       setEditingField(null);
