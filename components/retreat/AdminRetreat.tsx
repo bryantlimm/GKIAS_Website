@@ -138,6 +138,26 @@ const MergeIcon = () => (
   </svg>
 );
 
+const FilterIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="4 4 10 12 10 18 14 20 14 12 20 4"/>
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="6"/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+);
+
+const ClearIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
 // New icon for scanning a paper/document form
 const FormScanIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -192,6 +212,13 @@ export default function AdminRetreat() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<{
+    room: TipeKamar | "";
+    transport: "bus" | "mobil_sendiri" | "";
+    kaos: RetreatRegistration["members"][0]["ukuranKaos"] | "";
+  }>({ room: "", transport: "", kaos: "" });
   const isMobile = useIsMobile();
 
   // Scanner
@@ -446,6 +473,19 @@ export default function AdminRetreat() {
     XLSX.writeFile(workbook, `Registrasi-Retreat-${new Date().toISOString().split("T")[0]}.xlsx`);
   }
 
+  const filteredRegistrations = registrations.filter((reg) => {
+    const term = searchTerm.trim().toLowerCase();
+    const matchesName =
+      term.length === 0 ||
+      reg.members.some((member) => member.namaLengkap.toLowerCase().includes(term));
+
+    const matchesRoom = !activeFilters.room || reg.members.some((member) => member.tipeKamar === activeFilters.room);
+    const matchesTransport = !activeFilters.transport || reg.members.some((member) => member.transportasi === activeFilters.transport);
+    const matchesKaos = !activeFilters.kaos || reg.members.some((member) => member.ukuranKaos === activeFilters.kaos);
+
+    return matchesName && matchesRoom && matchesTransport && matchesKaos;
+  });
+
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#94a3b8", padding: "24px 0" }}>
@@ -642,22 +682,109 @@ export default function AdminRetreat() {
             </div>
           )}
 
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
+              {/* <SearchIcon /> */}
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari nama main/sub"
+                style={{
+                  width: "100%", boxSizing: "border-box", border: "1.5px solid #e8ecf0",
+                  borderRadius: 8, padding: "10px 12px 10px 36px", fontSize: 13,
+                  fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff",
+                }}
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters((prev) => !prev)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "10px 14px", borderRadius: 8,
+                border: showFilters || Object.values(activeFilters).some(Boolean)
+                  ? "1.5px solid #3b5bdb"
+                  : "1.5px solid #e8ecf0",
+                background: showFilters || Object.values(activeFilters).some(Boolean) ? "#eff3ff" : "#f8fafc",
+                color: showFilters || Object.values(activeFilters).some(Boolean) ? "#3b5bdb" : "#475569",
+                fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+                minHeight: 42,
+              }}
+            >
+              <FilterIcon /> Filter
+            </button>
+          </div>
+
+          {showFilters && (
+            <div style={{ display: "grid", gap: 10, padding: "12px 14px", border: "1.5px solid #e8ecf0", borderRadius: 10, background: "#fcfdff", marginBottom: 12 }}>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 5 }}>Tipe Kamar</label>
+                  <select
+                    value={activeFilters.room}
+                    onChange={(e) => setActiveFilters((prev) => ({ ...prev, room: e.target.value as TipeKamar | "" }))}
+                    style={{ width: "100%", border: "1.5px solid #e8ecf0", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff" }}
+                  >
+                    <option value="">Semua</option>
+                    <option value="isi4">Kamar isi 4</option>
+                    <option value="isi3">Kamar isi 3</option>
+                    <option value="isi2">Kamar isi 2</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 5 }}>Transportasi</label>
+                  <select
+                    value={activeFilters.transport}
+                    onChange={(e) => setActiveFilters((prev) => ({ ...prev, transport: e.target.value as "bus" | "mobil_sendiri" | "" }))}
+                    style={{ width: "100%", border: "1.5px solid #e8ecf0", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff" }}
+                  >
+                    <option value="">Semua</option>
+                    <option value="bus">Bus</option>
+                    <option value="mobil_sendiri">Mobil Sendiri</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 5 }}>Ukuran Kaos</label>
+                  <select
+                    value={activeFilters.kaos}
+                    onChange={(e) => setActiveFilters((prev) => ({ ...prev, kaos: e.target.value as RetreatRegistration["members"][0]["ukuranKaos"] | "" }))}
+                    style={{ width: "100%", border: "1.5px solid #e8ecf0", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontFamily: "inherit", color: "#1e293b", outline: "none", background: "#fff" }}
+                  >
+                    <option value="">Semua</option>
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="XXL">XXL</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setActiveFilters({ room: "", transport: "", kaos: "" })}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 7, border: "1.5px solid #e8ecf0", background: "#fff", color: "#64748b", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}
+                >
+                  <ClearIcon /> Reset Filter
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Count badges */}
-          {registrations.length > 0 && (
+          {filteredRegistrations.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               <span style={{ background: "#eff3ff", color: "#3b5bdb", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {registrations.reduce((sum, reg) => sum + reg.members.length, 0)} total (main + sub)
+                {filteredRegistrations.reduce((sum, reg) => sum + reg.members.length, 0)} total (main + sub)
               </span>
               <span style={{ background: "#fefce8", color: "#ca8a04", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {registrations.filter(r => r.status === "registered").length} menunggu (main)
+                {filteredRegistrations.filter(r => r.status === "registered").length} menunggu (main)
               </span>
               <span style={{ background: "#f0fdf4", color: "#16a34a", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>
-                {registrations.filter(r => r.status === "checked_in").length} checked in
+                {filteredRegistrations.filter(r => r.status === "checked_in").length} checked in
               </span>
             </div>
           )}
 
-          {registrations.length === 0 ? (
+          {filteredRegistrations.length === 0 ? (
             <div style={{
               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
               padding: "48px 24px", gap: 12, color: "#94a3b8",
@@ -668,12 +795,16 @@ export default function AdminRetreat() {
                   <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
                 </svg>
               </div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#64748b" }}>Belum ada pendaftaran</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8" }}>Pendaftaran yang masuk akan muncul di sini</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#64748b" }}>
+                {registrations.length === 0 ? "Belum ada pendaftaran" : "Tidak ada hasil yang cocok"}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8" }}>
+                {registrations.length === 0 ? "Pendaftaran yang masuk akan muncul di sini" : "Coba ubah kata kunci atau filter yang dipilih"}
+              </p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {registrations.map((reg) => {
+              {filteredRegistrations.map((reg) => {
                 const main = reg.members[0];
                 const subs = reg.members.slice(1);
                 const { color, initials } = getAvatar(main.namaLengkap);
