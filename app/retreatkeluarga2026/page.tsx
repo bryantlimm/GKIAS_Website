@@ -94,8 +94,8 @@ export default function RetreatLandingPage() {
               </div>
             )}
 
-            {/* Pricing */}
-            <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
+            {/* Pricing (STATIC) */}
+            {/* <div className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
               <p className="font-semibold text-gray-800">Biaya Pendaftaran</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -115,7 +115,7 @@ export default function RetreatLandingPage() {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Bank info */}
             {config.bankAccount && (

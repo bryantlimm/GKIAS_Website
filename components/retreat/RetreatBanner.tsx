@@ -17,17 +17,17 @@ export default function RetreatBanner() {
       <div className="flex-1 flex flex-col justify-center py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-lg space-y-6 text-center md:text-left mx-auto md:mx-0 md:ml-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-blue-900 leading-tight">
-            Retreat Keluarga 2026
+            See You at Retreat Keluarga 2026!
           </h2>
-          <p className="text-lg text-gray-700">
+          {/* <p className="text-lg text-gray-700">
             Daftarkan keluarga Anda untuk retreat spesial tahun ini. Tempat terbatas!
-          </p>
+          </p> */}
           <div>
             <Link
               href="/retreatkeluarga2026"
               className="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
             >
-              More Details →
+              Lihat Pendaftaran Anda →
             </Link>
           </div>
         </div>
