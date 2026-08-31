@@ -17,6 +17,26 @@ interface NewsItem {
   date: Timestamp;
 }
 
+interface NewsDraft {
+  id: string;
+  title: string;
+  body: string;
+  imageFile: File | null;
+  existingImageUrl: string;
+  pdfFile: File | null;
+  existingPdfUrl: string;
+}
+
+const createEmptyDraft = (): NewsDraft => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  title: '',
+  body: '',
+  imageFile: null,
+  existingImageUrl: '',
+  pdfFile: null,
+  existingPdfUrl: '',
+});
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 const PlusIcon = () => (
@@ -178,6 +198,7 @@ export default function NewsManager() {
   const [existingImageUrl, setExistingImageUrl] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [existingPdfUrl, setExistingPdfUrl] = useState('');
+  const [drafts, setDrafts] = useState<NewsDraft[]>([createEmptyDraft()]);
 
   const newsCollectionRef = collection(db, 'news');
 
@@ -202,10 +223,28 @@ export default function NewsManager() {
     return getDownloadURL(storageRef);
   };
 
+  const updateDraft = (index: number, updates: Partial<NewsDraft>) => {
+    setDrafts(prev => prev.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...updates } : draft));
+  };
+
+  const handleAddDraft = () => {
+    setDrafts(prev => [...prev, createEmptyDraft()]);
+  };
+
+  const handleRemoveDraft = (index: number) => {
+    setDrafts(prev => {
+      if (prev.length === 1) {
+        return [createEmptyDraft()];
+      }
+      return prev.filter((_, draftIndex) => draftIndex !== index);
+    });
+  };
+
   const resetForm = () => {
     setTitle(''); setBody('');
     setImageFile(null); setExistingImageUrl('');
     setPdfFile(null); setExistingPdfUrl('');
+    setDrafts([createEmptyDraft()]);
     setIsEditing(false); setEditId(null);
     setShowForm(false);
   };
@@ -214,22 +253,58 @@ export default function NewsManager() {
     e.preventDefault();
     setIsSaving(true);
     setStatusMessage({ type: '', message: '' });
+
     try {
-      const finalImageUrl = imageFile ? await handleFileUpload(imageFile, 'news_images') : existingImageUrl;
-      const finalPdfUrl = pdfFile ? await handleFileUpload(pdfFile, 'news_pdfs') : existingPdfUrl;
-      const newsData = {
-        title, body,
-        imageUrl: finalImageUrl || 'https://picsum.photos/600/400',
-        pdfUrl: finalPdfUrl || '',
-        date: Timestamp.now(),
-      };
       if (isEditing && editId) {
+        const finalImageUrl = imageFile ? await handleFileUpload(imageFile, 'news_images') : existingImageUrl;
+        const finalPdfUrl = pdfFile ? await handleFileUpload(pdfFile, 'news_pdfs') : existingPdfUrl;
+        const newsData = {
+          title,
+          body,
+          imageUrl: finalImageUrl || 'https://picsum.photos/600/400',
+          pdfUrl: finalPdfUrl || '',
+          date: Timestamp.now(),
+        };
+
         await updateDoc(doc(db, 'news', editId), newsData as unknown as Record<string, unknown>);
         setStatusMessage({ type: 'success', message: 'Berita berhasil diperbarui!' });
-      } else {
-        await addDoc(newsCollectionRef, newsData);
-        setStatusMessage({ type: 'success', message: 'Berita berhasil diterbitkan!' });
+        router.refresh();
+        await fetchNews();
+        resetForm();
+        return;
       }
+
+      const draftsToPublish = drafts.filter(draft => draft.title.trim() || draft.body.trim());
+
+      if (draftsToPublish.length === 0) {
+        setStatusMessage({ type: 'error', message: 'Isi judul dan konten untuk setidaknya satu berita.' });
+        return;
+      }
+
+      for (const draft of draftsToPublish) {
+        if (!draft.title.trim() || !draft.body.trim()) {
+          setStatusMessage({ type: 'error', message: 'Setiap berita harus memiliki judul dan konten.' });
+          return;
+        }
+      }
+
+      for (const draft of draftsToPublish) {
+        const finalImageUrl = draft.imageFile ? await handleFileUpload(draft.imageFile, 'news_images') : draft.existingImageUrl;
+        const finalPdfUrl = draft.pdfFile ? await handleFileUpload(draft.pdfFile, 'news_pdfs') : draft.existingPdfUrl;
+
+        await addDoc(newsCollectionRef, {
+          title: draft.title.trim(),
+          body: draft.body.trim(),
+          imageUrl: finalImageUrl || 'https://picsum.photos/600/400',
+          pdfUrl: finalPdfUrl || '',
+          date: Timestamp.now(),
+        });
+      }
+
+      setStatusMessage({
+        type: 'success',
+        message: draftsToPublish.length > 1 ? `${draftsToPublish.length} berita berhasil diterbitkan!` : 'Berita berhasil diterbitkan!',
+      });
       router.refresh();
       await fetchNews();
       resetForm();
@@ -247,6 +322,7 @@ export default function NewsManager() {
     setTitle(item.title); setBody(item.body || '');
     setExistingImageUrl(item.imageUrl); setExistingPdfUrl(item.pdfUrl || '');
     setImageFile(null); setPdfFile(null);
+    setDrafts([createEmptyDraft()]);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -348,42 +424,125 @@ export default function NewsManager() {
           </div>
 
           <form onSubmit={handleSubmit} style={{ padding: '20px 20px 24px' }}>
-            <div style={{ marginBottom: 16 }}>
-              <FieldLabel>Judul Berita</FieldLabel>
-              <input
-                type="text" value={title} onChange={e => setTitle(e.target.value)}
-                placeholder="Masukkan judul berita..." required style={inputStyle}
-                onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
-                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-              />
-            </div>
+            {isEditing ? (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <FieldLabel>Judul Berita</FieldLabel>
+                  <input
+                    type="text" value={title} onChange={e => setTitle(e.target.value)}
+                    placeholder="Masukkan judul berita..." required style={inputStyle}
+                    onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+                    onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+                  />
+                </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <FieldLabel>Konten / Deskripsi</FieldLabel>
-              <textarea
-                value={body} onChange={e => setBody(e.target.value)}
-                placeholder="Tulis isi berita di sini..."
-                rows={5} required
-                style={{ ...inputStyle, resize: 'vertical' }}
-                onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
-                onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
-              />
-            </div>
+                <div style={{ marginBottom: 20 }}>
+                  <FieldLabel>Konten / Deskripsi</FieldLabel>
+                  <textarea
+                    value={body} onChange={e => setBody(e.target.value)}
+                    placeholder="Tulis isi berita di sini..."
+                    rows={5} required
+                    style={{ ...inputStyle, resize: 'vertical' }}
+                    onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+                    onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+                  />
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
-              <FileDropZone
-                label="Gambar (Opsional)" accept="image/*" hint="PNG, JPG hingga 5MB"
-                file={imageFile} existingUrl={existingImageUrl} existingLabel="Gambar terpasang"
-                onChange={setImageFile}
-              />
-              <FileDropZone
-                label="PDF (Opsional)" accept="application/pdf" hint="File PDF"
-                file={pdfFile} existingUrl={existingPdfUrl} existingLabel="PDF terpasang"
-                onChange={setPdfFile}
-              />
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 22 }}>
+                  <FileDropZone
+                    label="Gambar (Opsional)" accept="image/*" hint="PNG, JPG hingga 5MB"
+                    file={imageFile} existingUrl={existingImageUrl} existingLabel="Gambar terpasang"
+                    onChange={setImageFile}
+                  />
+                  <FileDropZone
+                    label="PDF (Opsional)" accept="application/pdf" hint="File PDF"
+                    file={pdfFile} existingUrl={existingPdfUrl} existingLabel="PDF terpasang"
+                    onChange={setPdfFile}
+                  />
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {drafts.map((draft, index) => (
+                  <div key={draft.id} style={{ border: '1.5px solid #e2e8f0', borderRadius: 10, padding: 16, background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>Berita {index + 1}</p>
+                      {drafts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDraft(index)}
+                          style={{ background: 'transparent', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <FieldLabel>Judul Berita</FieldLabel>
+                      <input
+                        type="text"
+                        value={draft.title}
+                        onChange={e => updateDraft(index, { title: e.target.value })}
+                        placeholder="Masukkan judul berita..."
+                        style={inputStyle}
+                        onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+                        onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: 20 }}>
+                      <FieldLabel>Konten / Deskripsi</FieldLabel>
+                      <textarea
+                        value={draft.body}
+                        onChange={e => updateDraft(index, { body: e.target.value })}
+                        placeholder="Tulis isi berita di sini..."
+                        rows={4}
+                        style={{ ...inputStyle, resize: 'vertical' }}
+                        onFocus={e => (e.target.style.borderColor = '#3b5bdb')}
+                        onBlur={e => (e.target.style.borderColor = '#e2e8f0')}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <FileDropZone
+                        label="Gambar (Opsional)"
+                        accept="image/*"
+                        hint="PNG, JPG hingga 5MB"
+                        file={draft.imageFile}
+                        existingUrl={draft.existingImageUrl}
+                        existingLabel="Gambar terpasang"
+                        onChange={(file) => updateDraft(index, { imageFile: file, existingImageUrl: '' })}
+                      />
+                      <FileDropZone
+                        label="PDF (Opsional)"
+                        accept="application/pdf"
+                        hint="File PDF"
+                        file={draft.pdfFile}
+                        existingUrl={draft.existingPdfUrl}
+                        existingLabel="PDF terpasang"
+                        onChange={(file) => updateDraft(index, { pdfFile: file, existingPdfUrl: '' })}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={handleAddDraft}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '10px 14px', background: '#eff3ff', color: '#3b5bdb',
+                    border: '1.5px solid #c7d2fe', borderRadius: 8,
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  <PlusIcon /> Tambah Berita Lain
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
               <button
                 type="submit" disabled={isSaving}
                 style={{
