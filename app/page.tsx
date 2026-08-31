@@ -67,7 +67,7 @@ export default async function Home() {
         schedules={schedules.slice(0, 3)} 
       />
 
-      <RetreatBanner />
+      {/* <RetreatBanner /> */}
 
       <VideoSection 
         title={videoData.title}
