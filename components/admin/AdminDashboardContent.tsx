@@ -10,15 +10,12 @@ import SettingsEditor from './SettingsEditor';
 import SchedulesEditor from './SchedulesEditor';
 import NewsManager from './NewsManager';
 import PhotoSectionEditor from './PhotoSectionEditor';
-import LfjEditor from './LfjEditor';
 import VideoSectionEditor from './VideoSectionEditor';
 import VolunteerRequestsManager from './VolunteerRequestsManager';
 import AdminHomePage from './AdminHomePage';
 import AdminEventsPage from './AdminEventsPage';
 
 import ServiceEventsManager from './ServiceEventsManager';
-// for retreat purposes
-import AdminRetreat from "@/components/retreat/AdminRetreat";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,13 +103,6 @@ const PhotoIcon = () => (
   </svg>
 );
 
-const BookIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
-    <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
-  </svg>
-);
-
 const CalendarEvIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -133,8 +123,8 @@ const PeopleIcon = () => (
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type MainMenu = 'home' | 'halaman-utama' | 'warta' | 'ibadah' | 'volunteer' | 'events' | 'retreat2026';
-type HalamanTab = 'settings' | 'video' | 'schedules' | 'gallery' | 'lfj';
+type MainMenu = 'home' | 'halaman-utama' | 'warta' | 'ibadah' | 'volunteer' | 'events';
+type HalamanTab = 'settings' | 'video' | 'schedules' | 'gallery';
 
 interface HalamanTabConfig {
   id: HalamanTab;
@@ -148,7 +138,6 @@ const halamanTabs: HalamanTabConfig[] = [
   { id: 'video',     label: 'Kelola Video YouTube', icon: <YoutubeIcon />,  description: 'Video ibadah & konten YouTube' },
   { id: 'schedules', label: 'Jadwal Kebaktian',     icon: <CalendarIcon />, description: 'Atur jadwal & waktu kebaktian' },
   { id: 'gallery',   label: 'Galeri Foto',          icon: <PhotoIcon />,    description: 'Upload & kelola foto galeri' },
-  { id: 'lfj',       label: 'Kelola LFJ',           icon: <BookIcon />,     description: 'Lembar jemaat & konten LFJ' },
 ];
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -231,7 +220,6 @@ export default function AdminDashboardContent() {
     { id: 'ibadah', label: 'Laporan Ibadah', icon: <CalendarEvIcon /> },
     { id: 'volunteer',     label: 'Users Manager', icon: <PeopleIcon /> },
     { id: 'events',        label: 'Events',              icon: <CalendarEvIcon /> },
-    { id: "retreat2026",   label: "Retreat 2026 (NEW)", icon: <BellIcon /> },
   ];
 
   return (
@@ -681,13 +669,9 @@ export default function AdminDashboardContent() {
                   {activeTab === 'video'     && <VideoSectionEditor />}
                   {activeTab === 'schedules' && <SchedulesEditor />}
                   {activeTab === 'gallery'   && <PhotoSectionEditor />}
-                  {activeTab === 'lfj'       && <LfjEditor />}
                 </div>
               </div>
             )}
-
-            {/* Retreat 2026 */}
-            {activeMenu === 'retreat2026' && <AdminRetreat />}
 
           </div>
         </div>
