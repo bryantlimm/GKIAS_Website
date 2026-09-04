@@ -10,7 +10,6 @@ import { getHomePageSettings, getServiceSchedules, getLatestNews } from '@/lib/d
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore'; 
 // for retreat purposes
-import RetreatBanner from "@/components/retreat/RetreatBanner";
 
 export const dynamic = 'force-dynamic';
 
@@ -77,10 +76,12 @@ export default async function Home() {
 
       <NewsSection latestNews={latestNews} />
       
-      <JadwalKebaktian 
+      {/* <JadwalKebaktian 
         heroImageUrls={settings.heroImageUrls}
         schedules={schedules.slice(0, 3)} 
-      />
+      /> */}
+
+      <JadwalKebaktian schedules={schedules.slice(0, 3)} />
 
       <PhotoSection 
         title={photoData.title}

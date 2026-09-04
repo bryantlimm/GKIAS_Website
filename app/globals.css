@@ -12,6 +12,18 @@
   --font-mono: var(--font-geist-mono);
 }
 
+@theme {
+  --color-cream-50:  #FFFDF9;
+  --color-cream-100: #FAF7F1;
+  --color-cream-200: #F2EDE2;
+  --color-cream-300: #E5DFD1;
+
+  --color-ink-900: #2C2A26;
+  --color-ink-700: #4A473F;
+  --color-ink-600: #6B6459;
+  --color-ink-400: #A39C8C;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

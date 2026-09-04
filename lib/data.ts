@@ -41,18 +41,17 @@ export async function getServiceSchedules() {
   try {
     const schedulesCollection = collection(db, "schedules");
     const q = query(schedulesCollection, orderBy("order", "asc"));
-    
     const querySnapshot = await getDocs(q);
-    
-    // Explicitly cast and map the data to ensure correct fields are present
     const schedules = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            name: data.name as string,   // Explicitly cast
-            time: data.time as string,   // Explicitly cast
-            order: data.order as number, // Explicitly cast
-        };
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name as string,
+        time: data.time as string,
+        order: data.order as number,
+        imageUrl: (data.imageUrl as string) || '',
+        description: (data.description as string) || '',
+      };
     });
     return schedules;
   } catch (error) {
