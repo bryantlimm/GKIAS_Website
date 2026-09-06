@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, useRef } from 'react';
 import { db, storage } from '@/lib/firebase';
 import { collection, getDocs, updateDoc, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 interface Schedule {
   id: string;
@@ -13,6 +13,7 @@ interface Schedule {
   time: string;
   order: number;
   imageUrl: string;
+  imagePath?: string;
   description: string;
 }
 
@@ -186,12 +187,42 @@ export default function SchedulesEditor() {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [newItem, setNewItem] = useState<Omit<Schedule, 'id'>>({ name: '', time: '', order: 0, imageUrl: '', description: '' });
+  const [newItem, setNewItem] = useState<Omit<Schedule, 'id'>>({ name: '', time: '', order: 0, imageUrl: '', imagePath: '', description: '' });
+  
 
   // Local-file upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<string | null>(null); // schedule id, or 'new'
   const [uploadingTarget, setUploadingTarget] = useState<string | null>(null);
+
+  // Helper: extract storage path from download URL
+  const getStoragePathFromUrl = (url: string) => {
+    try {
+      const m = url.match(/\/o\/([^?]+)/);
+      if (!m || !m[1]) return null;
+      return decodeURIComponent(m[1]);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Helper: delete a file from Firebase Storage by path or download URL
+  const deleteStorageFile = async (pathOrUrl?: string) => {
+    if (!pathOrUrl) return;
+    let path = pathOrUrl;
+    if (pathOrUrl.startsWith('http')) {
+      const extracted = getStoragePathFromUrl(pathOrUrl);
+      if (!extracted) return;
+      path = extracted;
+    }
+    try {
+      // deleteObject will throw if file doesn't exist or permission denied
+      await deleteObject(ref(storage, path));
+    } catch (err) {
+      // ignore errors but log
+      console.warn('Failed to delete storage file:', err);
+    }
+  };
 
   const schedulesCollectionRef = collection(db, 'schedules');
 
@@ -232,6 +263,43 @@ export default function SchedulesEditor() {
     fileInputRef.current?.click();
   };
 
+  // Compress image file client-side using canvas
+  const compressImage = (file: File, maxWidth = 1600, quality = 0.8): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = Math.round(maxWidth);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas not supported');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error('Compression resulted in empty blob'));
+            resolve(blob);
+            URL.revokeObjectURL(url);
+          }, 'image/jpeg', quality);
+        } catch (err) {
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+      img.onerror = (e) => {
+        URL.revokeObjectURL(url);
+        reject(e);
+      };
+      img.src = url;
+    });
+  };
+
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const target = uploadTargetRef.current;
@@ -247,13 +315,17 @@ export default function SchedulesEditor() {
     try {
       const path = `schedules/${target}-${Date.now()}-${file.name}`;
       const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
+
+      // Compress before uploading
+      const blob = await compressImage(file);
+      await uploadBytes(storageRef, blob);
       const url = await getDownloadURL(storageRef);
 
       if (target === 'new') {
-        setNewItem(prev => ({ ...prev, imageUrl: url }));
+        setNewItem(prev => ({ ...prev, imageUrl: url, imagePath: path }));
       } else {
         handleChange(target, 'imageUrl', url);
+        handleChange(target, 'imagePath', path);
       }
       showToast('success', 'Foto berhasil diunggah.');
     } catch (error) {
@@ -266,11 +338,20 @@ export default function SchedulesEditor() {
   };
 
   const handleRemovePhoto = (target: string) => {
-    if (target === 'new') {
-      setNewItem(prev => ({ ...prev, imageUrl: '' }));
-    } else {
-      handleChange(target, 'imageUrl', '');
-    }
+    (async () => {
+      if (target === 'new') {
+        // delete previously uploaded temp file if exists
+        await deleteStorageFile(newItem.imagePath || newItem.imageUrl);
+        setNewItem(prev => ({ ...prev, imageUrl: '', imagePath: '' }));
+      } else {
+        const sched = schedules.find(s => s.id === target);
+        if (sched) {
+          await deleteStorageFile(sched.imagePath || sched.imageUrl);
+        }
+        handleChange(target, 'imageUrl', '');
+        handleChange(target, 'imagePath', '');
+      }
+    })();
   };
 
   // ── CRUD ──
@@ -317,6 +398,11 @@ export default function SchedulesEditor() {
     if (!window.confirm('Hapus jadwal ini?')) return;
     setDeletingId(id);
     try {
+      // delete associated image from storage (if any)
+      const sched = schedules.find(s => s.id === id);
+      if (sched) {
+        await deleteStorageFile(sched.imagePath || sched.imageUrl);
+      }
       await deleteDoc(doc(db, 'schedules', id));
       router.refresh();
       setSchedules(prev => prev.filter(s => s.id !== id));

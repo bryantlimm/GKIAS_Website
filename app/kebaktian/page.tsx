@@ -21,11 +21,11 @@ export default async function KebaktianPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <ScheduleGrid schedules={schedules} columns={2} />
 
-        <div className="mt-12 p-6 bg-cream-200 border-l-4 border-ink-900/20 rounded-xl text-center">
+        {/* <div className="mt-12 p-6 bg-cream-200 border-l-4 border-ink-900/20 rounded-xl text-center">
           <p className="text-lg font-medium text-ink-700">
             Pastikan untuk memeriksa pengumuman terbaru mengenai perubahan jadwal ibadah.
           </p>
-        </div>
+        </div> */}
       </div>
     </main>
   );
