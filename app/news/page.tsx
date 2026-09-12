@@ -72,7 +72,7 @@ export default async function NewsListingPage() {
               <Link 
                 key={newsItem.id} 
                 href={`/news/${newsItem.id}`}
-                className="block bg-white rounded shadow-lg hover:shadow-xl transition duration-300 transform hover:-translate-y-1 overflow-hidden"
+                className="block bg-white rounded-2xl shadow-lg hover:shadow-xl transition duration-300 transform hover:-translate-y-1 overflow-hidden"
               >
                 {/* News Image */}
                 <div className="relative w-full h-48">
