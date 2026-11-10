@@ -48,7 +48,7 @@ export default function Footer() {
               <span className="font-medium text-white">Call/WA:</span> +62-812-9059-3338
             </p>
             <p className="text-sm text-blue-200">
-              <span className="font-medium text-white">Email:</span> gkiamsutera@gmail.com
+              <span className="font-medium text-white">Email:</span> gkialamsutera@gmail.com
             </p>
           </div>
 
